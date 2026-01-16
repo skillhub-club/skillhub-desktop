@@ -52,11 +52,28 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS Signing & Notarization secrets (Optional, but required to avoid "App is damaged" error)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'SkillHub Desktop ${{ github.ref_name }}'
           releaseBody: |
             See the [CHANGELOG](https://github.com/skillhub-club/skillhub-desktop/blob/main/CHANGELOG.md) for details.
+
+            ## ⚠️ macOS Users / macOS 用户请注意
+            If you encounter the "App is damaged" error or cannot open the app, it is because the app is not notarized by Apple yet. Please run the following command in your Terminal to fix it:
+            
+            如果打开应用时提示“应用已损坏”或无法打开，这是因为应用尚未经过 Apple 签名公证。请在终端（Terminal）中运行以下命令来解决：
+
+            ```bash
+            xattr -cr /Applications/"SkillHub Desktop.app"
+            ```
+            *(Make sure you have moved the app to the Applications folder / 确保您已经将应用拖入到了“应用程序”文件夹)*
 
             ## Downloads
             - **macOS (Apple Silicon)**: `.dmg` file for M1/M2/M3 Macs
