@@ -13,7 +13,7 @@ export default function UserMenu() {
 
   const handleLoginClick = async () => {
     // Open browser for GitHub OAuth
-    const authUrl = `${SKILLHUB_URL}/auth/signin?callback=desktop`
+    const authUrl = `${SKILLHUB_URL}/web/auth/signin?callback=desktop`
     try {
       await open(authUrl)
       setShowLoginModal(true)
