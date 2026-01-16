@@ -159,7 +159,7 @@ export default function Settings() {
 
           <div className="flex gap-4">
             <a
-              href="https://skillhub.dev"
+              href="https://www.skillhub.club"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-sm font-semibold text-foreground underline underline-offset-4 decoration-2 hover:decoration-4 transition-all"

@@ -99,7 +99,7 @@ export interface TrackGenerationRequest {
 // Get the API base URL
 function getApiBaseUrl(): string {
   // Use environment variable or default to production
-  return import.meta.env.VITE_SKILLHUB_API_URL || 'https://skillhub.dev'
+  return import.meta.env.VITE_SKILLHUB_API_URL || 'https://www.skillhub.club'
 }
 
 // Generate skill using AI (SSE streaming)

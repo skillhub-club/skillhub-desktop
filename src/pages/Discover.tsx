@@ -8,7 +8,7 @@ import SkillDetail from '../components/SkillDetail'
 import ToolSelector from '../components/ToolSelector'
 import type { SkillHubSkill } from '../types'
 
-const SKILLHUB_URL = 'http://localhost:3000'
+const SKILLHUB_URL = import.meta.env.VITE_SKILLHUB_API_URL || 'https://www.skillhub.club'
 const PAGE_SIZE = 12
 
 const CATEGORIES = [

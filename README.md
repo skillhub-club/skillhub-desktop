@@ -2,7 +2,7 @@
 
 A desktop application for managing AI coding skills across multiple tools. Browse, install, and sync skills between Claude Code, Cursor, OpenCode, and more.
 
-![SkillHub Desktop](https://skillhub.dev/og-image.png)
+![SkillHub Desktop](https://www.skillhub.club/og-image.png)
 
 ## Features
 
@@ -118,6 +118,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Links
 
-- [SkillHub Website](https://skillhub.dev)
-- [Documentation](https://skillhub.dev/docs)
-- [Report Issues](https://github.com/anthropics/skillhub-desktop/issues)
+- [SkillHub Website](https://www.skillhub.club)
+- [Documentation](https://www.skillhub.club/docs)
+- [Report Issues](https://github.com/skillhub-club/skillhub-desktop/issues)

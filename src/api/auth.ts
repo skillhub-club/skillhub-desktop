@@ -1,6 +1,7 @@
 import { useAppStore } from '../store'
 
-const SKILLHUB_URL = 'http://localhost:3000'
+// Get the API base URL from environment or default to production
+const SKILLHUB_URL = import.meta.env.VITE_SKILLHUB_API_URL || 'https://www.skillhub.club'
 const OAUTH_CLIENT_ID = 'skillhub-desktop'
 
 // Buffer time before token expiry to trigger refresh (5 minutes)
