@@ -1,0 +1,26 @@
+[package]
+name = "skillhub-desktop"
+version = "0.1.0"
+description = "SkillHub Desktop - Manage AI coding skills across all your tools"
+authors = ["SkillHub"]
+edition = "2021"
+
+[lib]
+name = "skillhub_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dirs = "5"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+regex = "1"
+async-recursion = "1"
