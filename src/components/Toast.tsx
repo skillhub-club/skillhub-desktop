@@ -14,10 +14,10 @@ export default function Toast({ message, onClose, duration = 3000 }: ToastProps)
   }, [onClose, duration])
 
   return (
-    <div className="fixed bottom-4 right-4 bg-gray-900 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up">
+    <div className="fixed bottom-4 right-4 bg-foreground text-background px-4 py-3 border-2 border-foreground flex items-center gap-3 animate-slide-up">
       <CheckCircle size={18} className="text-green-400" />
-      <span>{message}</span>
-      <button onClick={onClose} className="text-gray-400 hover:text-white">
+      <span className="font-semibold uppercase tracking-wider text-sm">{message}</span>
+      <button onClick={onClose} className="text-background/60 hover:text-background">
         <X size={16} />
       </button>
     </div>

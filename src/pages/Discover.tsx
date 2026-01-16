@@ -182,20 +182,20 @@ export default function Discover() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Discover Skills</h1>
-        <p className="text-gray-600">Browse and install AI coding skills from SkillHub</p>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground mb-2 tracking-tight">DISCOVER</h1>
+        <p className="text-muted-foreground">Browse and install AI coding skills from SkillHub</p>
       </div>
 
       {/* Search */}
       <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
         <input
           type="text"
           placeholder="Search skills with AI... (e.g., 'React component generator')"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+          className="input pl-12"
         />
       </div>
 
@@ -206,10 +206,10 @@ export default function Discover() {
             <button
               key={cat.id}
               onClick={() => setCurrentCategory(cat.id)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`px-4 py-2 text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all border-2 ${
                 currentCategory === cat.id
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-background text-foreground border-border-light hover:border-foreground'
               }`}
             >
               {cat.label}
@@ -221,10 +221,10 @@ export default function Discover() {
       {/* Skills Grid */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="animate-spin text-primary-600" size={32} />
+          <Loader2 className="animate-spin text-foreground" size={32} />
         </div>
       ) : displayedSkills.length === 0 ? (
-        <div className="text-center py-20 text-gray-500">
+        <div className="text-center py-20 text-muted-foreground">
           {searchQuery ? 'No skills found' : 'No skills available'}
         </div>
       ) : (
@@ -243,12 +243,12 @@ export default function Discover() {
           </div>
 
           {/* Load More / View on Website */}
-          <div className="mt-8 text-center space-y-3">
+          <div className="mt-8 text-center space-y-4">
             {hasMore && (
               <button
                 onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                className="btn btn-primary disabled:opacity-50"
               >
                 {loadingMore ? (
                   <Loader2 size={18} className="animate-spin" />
@@ -262,7 +262,7 @@ export default function Discover() {
             <div>
               <button
                 onClick={() => openWebsite(searchQuery ? `/skills?q=${encodeURIComponent(searchQuery)}` : '/skills')}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+                className="btn btn-secondary"
               >
                 <ExternalLink size={18} />
                 {searchQuery
@@ -272,7 +272,7 @@ export default function Discover() {
               </button>
             </div>
 
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground uppercase tracking-wider">
               Showing {displayedSkills.length} skills
               {!searchQuery && totalPages > 1 && ` (page ${currentPage} of ${totalPages})`}
             </p>
@@ -283,10 +283,10 @@ export default function Discover() {
       {/* Install Modal */}
       {showInstallModal && selectedSkill && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-bold mb-2">Install Skill</h2>
-            <p className="text-gray-600 mb-4">
-              Installing <strong>{selectedSkill.name}</strong>
+          <div className="bg-background border-2 border-foreground p-6 w-full max-w-md mx-4">
+            <h2 className="text-xl font-bold mb-2 tracking-tight">INSTALL SKILL</h2>
+            <p className="text-muted-foreground mb-4">
+              Installing <strong className="text-foreground">{selectedSkill.name}</strong>
             </p>
 
             <ToolSelector />
@@ -299,7 +299,7 @@ export default function Discover() {
                   const { selectAllTools } = useAppStore.getState()
                   selectAllTools()
                 }}
-                className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg border border-primary-200"
+                className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-secondary border-2 border-border-light"
               >
                 <Zap size={16} />
                 Select All {installedTools.length} Tools
@@ -309,14 +309,14 @@ export default function Discover() {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowInstallModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="btn btn-secondary flex-1"
               >
                 Cancel
               </button>
               <button
                 onClick={handleInstall}
                 disabled={installing || selectedToolIds.length === 0}
-                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {installing ? 'Installing...' : 'Install'}
               </button>

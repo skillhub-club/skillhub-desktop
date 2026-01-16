@@ -105,5 +105,13 @@
     "noContent": "无内容可预览",
     "noFiles": "未找到文件",
     "filesInFolders": "{{folders}} 个文件夹中共 {{files}} 个文件"
+  },
+  "searchDialog": {
+    "quickActions": "快速操作",
+    "noResults": "未找到技能",
+    "pressEnter": "按 Enter 键在发现页面搜索",
+    "navigate": "导航",
+    "select": "选择",
+    "close": "关闭"
   }
 }

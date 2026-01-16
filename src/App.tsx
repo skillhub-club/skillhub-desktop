@@ -1,6 +1,7 @@
-import { Routes, Route, NavLink } from 'react-router-dom'
+import { Routes, Route, NavLink, useNavigate } from 'react-router-dom'
 import { Search, Package, RefreshCw, Settings, Heart, Folder, PlusCircle } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAppStore } from './store'
 import { detectTools } from './api/skillhub'
 
@@ -13,6 +14,7 @@ import Collections from './pages/Collections'
 import CreateSkill from './pages/CreateSkill'
 import Toast from './components/Toast'
 import UserMenu from './components/UserMenu'
+import SearchDialog from './components/SearchDialog'
 
 const navItems = [
   { path: '/', icon: Search, label: 'Discover' },
@@ -26,23 +28,60 @@ const navItems = [
 
 function App() {
   const { setTools, toastMessage, setToastMessage, isAuthenticated } = useAppStore()
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+
+  const [showSearchDialog, setShowSearchDialog] = useState(false)
 
   useEffect(() => {
     // Detect tools on startup
     detectTools().then(setTools).catch(console.error)
   }, [setTools])
 
+  // Refresh tools handler
+  const handleRefreshTools = useCallback(async () => {
+    try {
+      const newTools = await detectTools()
+      setTools(newTools)
+      setToastMessage(t('settings.refreshTools') + ' ✓')
+    } catch (error) {
+      console.error('Failed to refresh tools:', error)
+    }
+  }, [setTools, setToastMessage, t])
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for ⌘ (Mac) or Ctrl (Windows/Linux)
+      const isMod = e.metaKey || e.ctrlKey
+
+      if (isMod && e.key === 'k') {
+        e.preventDefault()
+        setShowSearchDialog(true)
+      } else if (isMod && e.key === 'r') {
+        e.preventDefault()
+        handleRefreshTools()
+      } else if (isMod && e.key === ',') {
+        e.preventDefault()
+        navigate('/settings')
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [navigate, handleRefreshTools])
+
   const visibleNavItems = navItems.filter(
     item => !item.authRequired || isAuthenticated
   )
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
-      <aside className="w-56 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-primary-600">SkillHub</h1>
-          <p className="text-xs text-gray-500">Desktop Manager</p>
+    <div className="flex h-screen bg-background">
+      {/* Sidebar - Swiss Design */}
+      <aside className="w-56 bg-secondary border-r-2 border-foreground flex flex-col">
+        <div className="p-4 border-b-2 border-foreground">
+          <h1 className="text-xl font-bold text-foreground tracking-tight">SKILLHUB</h1>
+          <p className="text-xs text-muted-foreground uppercase tracking-widest">Desktop</p>
         </div>
 
         <nav className="flex-1 p-2">
@@ -51,31 +90,31 @@ function App() {
               key={path}
               to={path}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg mb-1 transition-colors ${
+                `flex items-center gap-3 px-3 py-2.5 mb-1 transition-all border-2 ${
                   isActive
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'text-foreground border-transparent hover:bg-background hover:border-foreground'
                 }`
               }
             >
               <Icon size={18} />
-              <span className="font-medium">{label}</span>
+              <span className="font-semibold text-sm uppercase tracking-wide">{label}</span>
             </NavLink>
           ))}
         </nav>
 
         {/* User Menu */}
-        <div className="p-2 border-t border-gray-200">
+        <div className="p-2 border-t-2 border-foreground">
           <UserMenu />
         </div>
 
-        <div className="px-4 py-2">
-          <p className="text-xs text-gray-400 text-center">v0.1.0</p>
+        <div className="px-4 py-2 border-t border-border-light">
+          <p className="text-xs text-muted-foreground text-center uppercase tracking-widest">v0.1.0</p>
         </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto bg-background">
         <Routes>
           <Route path="/" element={<Discover />} />
           <Route path="/create" element={<CreateSkill />} />
@@ -91,6 +130,12 @@ function App() {
       {toastMessage && (
         <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
       )}
+
+      {/* Search Dialog (⌘+K) */}
+      <SearchDialog
+        open={showSearchDialog}
+        onClose={() => setShowSearchDialog(false)}
+      />
     </div>
   )
 }

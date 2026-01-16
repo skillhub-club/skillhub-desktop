@@ -105,5 +105,13 @@
     "noContent": "No content to preview",
     "noFiles": "No files found",
     "filesInFolders": "{{files}} files in {{folders}} folders"
+  },
+  "searchDialog": {
+    "quickActions": "Quick Actions",
+    "noResults": "No skills found",
+    "pressEnter": "Press Enter to search on Discover page",
+    "navigate": "navigate",
+    "select": "select",
+    "close": "close"
   }
 }

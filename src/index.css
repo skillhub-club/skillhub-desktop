@@ -3,51 +3,175 @@
 @tailwind utilities;
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Swiss Design - Pure Black & White */
+  --background: #FFFFFF;
+  --foreground: #000000;
+  --card: #FFFFFF;
+  --card-foreground: #000000;
+  --primary: #000000;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F5F5F5;
+  --secondary-foreground: #000000;
+  --muted: #F5F5F5;
+  --muted-foreground: #666666;
+  --accent: #F5F5F5;
+  --accent-foreground: #000000;
+  --border: #000000;
+  --border-light: #E5E5E5;
+  --input: #FFFFFF;
+  --ring: #000000;
+  --radius: 0px;
+
+  font-family: Inter, system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #213547;
-  background-color: #ffffff;
+  color: var(--foreground);
+  background-color: var(--background);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+* {
+  border-color: var(--border-light);
+}
+
 body {
   margin: 0;
   min-height: 100vh;
+  color: var(--foreground);
+  background: var(--background);
 }
 
-/* Custom scrollbar */
+/* Swiss Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+@layer components {
+  /* Swiss Card - Bold Border */
+  .card {
+    @apply bg-card border-2 border-border;
+    transition: all 0.15s ease;
+  }
+
+  .card:hover {
+    @apply bg-secondary;
+  }
+
+  /* Swiss Button Styles */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold uppercase tracking-wider transition-all duration-150 border-2 border-foreground;
+  }
+
+  .btn-primary {
+    @apply bg-foreground text-background hover:bg-background hover:text-foreground;
+  }
+
+  .btn-secondary {
+    @apply bg-background text-foreground hover:bg-foreground hover:text-background;
+  }
+
+  .btn-ghost {
+    @apply border-transparent hover:border-foreground;
+  }
+
+  /* Swiss Input */
+  .input {
+    @apply w-full px-4 py-3 bg-background border-2 border-foreground text-base placeholder:text-muted-foreground focus:outline-none focus:bg-secondary transition-all duration-150;
+  }
+
+  /* Swiss Badge */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 text-xs font-bold uppercase tracking-widest border-2 border-foreground;
+  }
+
+  .badge-default {
+    @apply bg-background text-foreground;
+  }
+
+  .badge-primary {
+    @apply bg-foreground text-background;
+  }
+
+  /* Swiss Label - All caps with wide tracking */
+  .swiss-label {
+    @apply text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground;
+  }
+
+  /* Tag Style - Swiss uppercase */
+  .tag {
+    @apply px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground border border-border-light;
+  }
+}
+
+/* Swiss Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
+  background: var(--background);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
+  background: var(--foreground);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
+  background: var(--muted-foreground);
 }
 
-/* Rating colors */
-.rating-a { color: #22c55e; }
-.rating-b { color: #84cc16; }
-.rating-c { color: #eab308; }
-.rating-d { color: #f97316; }
-.rating-e { color: #ef4444; }
+/* Selection - Swiss */
+::selection {
+  background: var(--foreground);
+  color: var(--background);
+}
 
-.rating-bg-a { background-color: #dcfce7; }
-.rating-bg-b { background-color: #ecfccb; }
-.rating-bg-c { background-color: #fef9c3; }
-.rating-bg-d { background-color: #ffedd5; }
-.rating-bg-e { background-color: #fee2e2; }
+/* Focus Ring - Swiss */
+:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}
+
+/* Rating Badges */
+.rating-s {
+  @apply bg-yellow-500 text-black;
+}
+
+.rating-a {
+  @apply bg-purple-500 text-white;
+}
+
+.rating-b {
+  @apply bg-blue-500 text-white;
+}
+
+/* Category colors */
+.cat-development { background-color: #000080; color: white; }
+.cat-design { background-color: #FF0080; color: white; }
+.cat-writing { background-color: #008080; color: white; }
+.cat-data { background-color: #008000; color: white; }
+.cat-automation { background-color: #800080; color: white; }
+.cat-documentation { background-color: #808000; color: white; }
+.cat-meta { background-color: #404040; color: white; }
+
+/* Animations */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out forwards;
+}

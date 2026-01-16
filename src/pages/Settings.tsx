@@ -46,35 +46,35 @@ export default function Settings() {
     <div className="p-6 max-w-3xl">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('settings.title')}</h1>
-        <p className="text-gray-600">{t('settings.subtitle')}</p>
+        <h1 className="text-3xl font-bold text-foreground mb-2 tracking-tight">{t('settings.title').toUpperCase()}</h1>
+        <p className="text-muted-foreground">{t('settings.subtitle')}</p>
       </div>
 
       {/* Language Selection */}
       <section className="mb-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('settings.language')}</h2>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h2 className="swiss-label mb-4">{t('settings.language')}</h2>
+        <div className="card p-4">
           <div className="flex items-center gap-3 mb-3">
-            <Globe size={20} className="text-gray-500" />
-            <p className="text-sm text-gray-600">{t('settings.languageDescription')}</p>
+            <Globe size={20} className="text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">{t('settings.languageDescription')}</p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => handleLanguageChange('en')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 text-sm font-bold uppercase tracking-wider transition-all border-2 ${
                 currentLang === 'en'
-                  ? 'bg-primary-100 text-primary-700 border-2 border-primary-500'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-transparent'
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-background text-foreground border-border-light hover:border-foreground'
               }`}
             >
               {t('settings.english')}
             </button>
             <button
               onClick={() => handleLanguageChange('zh')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 text-sm font-bold uppercase tracking-wider transition-all border-2 ${
                 currentLang === 'zh'
-                  ? 'bg-primary-100 text-primary-700 border-2 border-primary-500'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-transparent'
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-background text-foreground border-border-light hover:border-foreground'
               }`}
             >
               {t('settings.chinese')}
@@ -86,48 +86,48 @@ export default function Settings() {
       {/* Detected Tools */}
       <section className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">{t('settings.detectedTools')}</h2>
+          <h2 className="swiss-label">{t('settings.detectedTools')}</h2>
           <button
             onClick={handleRefreshTools}
             disabled={refreshing}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-secondary border-2 border-transparent hover:border-foreground"
           >
             <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
             {t('settings.refreshTools')}
           </button>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
+        <div className="card divide-y divide-border-light">
           {tools.map(tool => (
             <div key={tool.id} className="p-4 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">{tool.name}</span>
+                  <span className="font-bold text-foreground">{tool.name}</span>
                   {tool.installed ? (
-                    <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded">
+                    <span className="px-2 py-0.5 text-xs font-bold uppercase tracking-wider bg-foreground text-background">
                       {t('settings.installed')}
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-500 rounded">
+                    <span className="px-2 py-0.5 text-xs font-bold uppercase tracking-wider bg-muted text-muted-foreground">
                       {t('settings.notFound')}
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-gray-500 mt-1">{tool.config_path}</p>
+                <p className="text-sm text-muted-foreground mt-1 font-mono">{tool.config_path}</p>
               </div>
 
               {tool.installed && (
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setExploringTool(tool)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-primary-600 hover:bg-primary-50 rounded-lg"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-secondary border-2 border-transparent hover:border-foreground"
                   >
                     <Eye size={16} />
                     {t('settings.viewSkills')}
                   </button>
                   <button
                     onClick={() => openFolder(tool.skills_path)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-secondary border-2 border-transparent hover:border-foreground"
                   >
                     <FolderOpen size={16} />
                     {t('settings.openFolder')}
@@ -141,19 +141,19 @@ export default function Settings() {
 
       {/* About */}
       <section className="mb-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('settings.about')}</h2>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h2 className="swiss-label mb-4">{t('settings.about')}</h2>
+        <div className="card p-4">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-              <span className="text-primary-600 font-bold text-xl">SH</span>
+            <div className="w-12 h-12 bg-foreground flex items-center justify-center">
+              <span className="text-background font-bold text-xl">SH</span>
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">SkillHub Desktop</h3>
-              <p className="text-sm text-gray-500">{t('settings.version')} 0.1.0</p>
+              <h3 className="font-bold text-foreground">SkillHub Desktop</h3>
+              <p className="text-sm text-muted-foreground uppercase tracking-wider">{t('settings.version')} 0.1.0</p>
             </div>
           </div>
 
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             {t('settings.aboutDescription')}
           </p>
 
@@ -162,7 +162,7 @@ export default function Settings() {
               href="https://skillhub.dev"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-primary-600 hover:underline"
+              className="flex items-center gap-1.5 text-sm font-semibold text-foreground underline underline-offset-4 decoration-2 hover:decoration-4 transition-all"
             >
               <ExternalLink size={14} />
               {t('settings.visitSkillHub')}
@@ -171,7 +171,7 @@ export default function Settings() {
               href="https://github.com/anthropics/skillhub"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-primary-600 hover:underline"
+              className="flex items-center gap-1.5 text-sm font-semibold text-foreground underline underline-offset-4 decoration-2 hover:decoration-4 transition-all"
             >
               <ExternalLink size={14} />
               {t('settings.github')}
@@ -182,20 +182,20 @@ export default function Settings() {
 
       {/* Keyboard Shortcuts */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('settings.keyboardShortcuts')}</h2>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">{t('settings.searchSkills')}</span>
-              <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">⌘ + K</kbd>
+        <h2 className="swiss-label mb-4">{t('settings.keyboardShortcuts')}</h2>
+        <div className="card p-4">
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">{t('settings.searchSkills')}</span>
+              <kbd className="px-3 py-1.5 bg-foreground text-background text-xs font-bold tracking-wider">⌘ + K</kbd>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">{t('settings.refreshToolsShortcut')}</span>
-              <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">⌘ + R</kbd>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">{t('settings.refreshToolsShortcut')}</span>
+              <kbd className="px-3 py-1.5 bg-foreground text-background text-xs font-bold tracking-wider">⌘ + R</kbd>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">{t('settings.settingsShortcut')}</span>
-              <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">⌘ + ,</kbd>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">{t('settings.settingsShortcut')}</span>
+              <kbd className="px-3 py-1.5 bg-foreground text-background text-xs font-bold tracking-wider">⌘ + ,</kbd>
             </div>
           </div>
         </div>

@@ -94,7 +94,7 @@ export default function UserMenu() {
       <>
         <button
           onClick={handleLoginClick}
-          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+          className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-background border-2 border-transparent hover:border-foreground transition-all"
         >
           <LogIn size={18} />
           <span>Sign in</span>
@@ -103,9 +103,9 @@ export default function UserMenu() {
         {/* Login Modal */}
         {showLoginModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-sm mx-4">
-              <h2 className="text-xl font-bold mb-2">Sign in to SkillHub</h2>
-              <p className="text-gray-600 text-sm mb-4">
+            <div className="bg-background border-2 border-foreground p-6 w-full max-w-sm mx-4">
+              <h2 className="text-xl font-bold mb-2 tracking-tight">SIGN IN</h2>
+              <p className="text-muted-foreground text-sm mb-4">
                 A browser window has opened. After signing in, enter the code shown:
               </p>
 
@@ -114,7 +114,7 @@ export default function UserMenu() {
                 placeholder="Enter code"
                 value={loginCode}
                 onChange={(e) => setLoginCode(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg mb-4 text-center text-2xl font-mono tracking-widest"
+                className="input text-center text-2xl font-mono tracking-widest mb-4"
                 maxLength={8}
               />
 
@@ -124,14 +124,14 @@ export default function UserMenu() {
                     setShowLoginModal(false)
                     setLoginCode('')
                   }}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="btn btn-secondary flex-1"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCodeSubmit}
                   disabled={isLoggingIn || !loginCode.trim()}
-                  className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                  className="btn btn-primary flex-1 disabled:opacity-50"
                 >
                   {isLoggingIn ? 'Signing in...' : 'Sign in'}
                 </button>
@@ -147,32 +147,32 @@ export default function UserMenu() {
     <div className="relative">
       <button
         onClick={() => setShowMenu(!showMenu)}
-        className="flex items-center gap-2 w-full px-3 py-2 hover:bg-gray-100 rounded-lg"
+        className="flex items-center gap-2 w-full px-3 py-2 hover:bg-background border-2 border-transparent hover:border-foreground transition-all"
       >
         {user?.avatar_url ? (
-          <img src={user.avatar_url} alt="" className="w-8 h-8 rounded-full" />
+          <img src={user.avatar_url} alt="" className="w-8 h-8" />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
-            <User size={16} className="text-primary-600" />
+          <div className="w-8 h-8 bg-foreground flex items-center justify-center">
+            <User size={16} className="text-background" />
           </div>
         )}
         <div className="flex-1 text-left">
-          <p className="text-sm font-medium text-gray-900 truncate">
+          <p className="text-sm font-bold text-foreground truncate">
             {user?.name || user?.github_username || 'User'}
           </p>
         </div>
-        <ChevronDown size={16} className="text-gray-400" />
+        <ChevronDown size={16} className="text-muted-foreground" />
       </button>
 
       {showMenu && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-          <div className="absolute bottom-full left-0 right-0 mb-1 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+          <div className="absolute bottom-full left-0 right-0 mb-1 bg-background border-2 border-foreground z-50">
             <a
               href={`${SKILLHUB_URL}/app/favorites`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+              className="flex items-center gap-2 px-3 py-2 text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-secondary"
               onClick={() => setShowMenu(false)}
             >
               <Heart size={16} />
@@ -180,7 +180,7 @@ export default function UserMenu() {
             </a>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm font-semibold uppercase tracking-wider text-red-600 hover:bg-red-50"
             >
               <LogOut size={16} />
               Sign out
