@@ -1,5 +1,6 @@
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom'
-import { Search, Package, RefreshCw, Settings, Heart, Folder, PlusCircle } from 'lucide-react'
+import { Search, Package, RefreshCw, Settings, Heart, Folder, PlusCircle, ExternalLink } from 'lucide-react'
+import { open } from '@tauri-apps/plugin-shell'
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from './store'
@@ -79,10 +80,18 @@ function App() {
     <div className="flex h-screen bg-background">
       {/* Sidebar - Swiss Design */}
       <aside className="w-56 bg-secondary border-r-2 border-foreground flex flex-col">
-        <div className="p-4 border-b-2 border-foreground">
-          <h1 className="text-xl font-bold text-foreground tracking-tight">SKILLHUB</h1>
-          <p className="text-xs text-muted-foreground uppercase tracking-widest">Desktop</p>
-        </div>
+        <button
+          onClick={() => open('https://www.skillhub.club')}
+          className="w-full p-4 border-b-2 border-foreground text-left hover:bg-background transition-colors group"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-foreground tracking-tight group-hover:underline">SKILLHUB</h1>
+              <p className="text-xs text-muted-foreground uppercase tracking-widest">Desktop</p>
+            </div>
+            <ExternalLink size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        </button>
 
         <nav className="flex-1 p-2">
           {visibleNavItems.map(({ path, icon: Icon, label }) => (
