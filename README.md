@@ -68,6 +68,18 @@ npm run tauri dev
 npm run tauri build
 ```
 
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SKILLHUB_API_URL` | `https://www.skillhub.club` | API base URL |
+
+To use a custom API URL (e.g., local development):
+
+```bash
+SKILLHUB_API_URL=http://localhost:3000 npm run tauri dev
+```
+
 ### Project Structure
 
 ```

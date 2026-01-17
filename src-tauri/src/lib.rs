@@ -74,14 +74,24 @@ async fn read_skill_content(skill_path: String) -> Result<String, String> {
     tools::read_skill_content(&skill_path).await
 }
 
+// API base URL - can be overridden via SKILLHUB_API_URL environment variable
+// Default: https://www.skillhub.club (production)
+// For local development: SKILLHUB_API_URL=http://localhost:3000 npm run tauri dev
+const DEFAULT_API_URL: &str = "https://www.skillhub.club";
+
+fn get_api_base_url() -> String {
+    std::env::var("SKILLHUB_API_URL").unwrap_or_else(|_| DEFAULT_API_URL.to_string())
+}
+
 // Search skills from SkillHub API (using public desktop endpoint)
 #[tauri::command]
 async fn search_skills(query: String, limit: Option<i32>) -> Result<Vec<SkillHubSkill>, String> {
     let limit = limit.unwrap_or(20);
     let client = reqwest::Client::new();
+    let base_url = get_api_base_url();
 
     let response = client
-        .post("http://localhost:3000/api/v1/desktop/search")
+        .post(format!("{}/api/v1/desktop/search", base_url))
         .json(&serde_json::json!({
             "query": query,
             "limit": limit
@@ -111,9 +121,11 @@ async fn get_catalog(
     sort_by: Option<String>,
 ) -> Result<serde_json::Value, String> {
     let client = reqwest::Client::new();
+    let base_url = get_api_base_url();
 
     let mut url = format!(
-        "http://localhost:3000/api/v1/desktop/catalog?page={}&limit={}",
+        "{}/api/v1/desktop/catalog?page={}&limit={}",
+        base_url,
         page.unwrap_or(1),
         limit.unwrap_or(20)
     );
@@ -143,9 +155,10 @@ async fn get_catalog(
 #[tauri::command]
 async fn get_skill_detail(slug: String) -> Result<serde_json::Value, String> {
     let client = reqwest::Client::new();
+    let base_url = get_api_base_url();
 
     let response = client
-        .get(&format!("http://localhost:3000/api/v1/desktop/skills/{}", slug))
+        .get(&format!("{}/api/v1/desktop/skills/{}", base_url, slug))
         .send()
         .await
         .map_err(|e| format!("Failed to get skill detail: {}", e))?;
