@@ -2,126 +2,168 @@ use crate::{DetectedTool, InstalledSkill};
 use std::path::PathBuf;
 use tokio::fs;
 
-// Tool configurations
+// Tool configurations based on OFFICIAL documentation:
+// - Claude Code: https://docs.anthropic.com/en/docs/claude-code/skills
+// - Codex: https://developers.openai.com/codex/skills
+// - Cline: https://docs.cline.bot/features/skills
+// - Cursor: cursor docs
+// - OpenCode: opencode.ai/docs/skills
+// - Gemini CLI: geminicli.com/docs/cli/skills
+// - Kilo Code: kilocode docs
+
 struct ToolConfig {
     id: &'static str,
     name: &'static str,
     config_paths: &'static [&'static str],
-    // Multiple possible skill subpaths (checked in order)
-    skills_subpaths: &'static [&'static str],
+    // Primary skills directory (for display and installation)
+    primary_subpath: &'static str,
+    // All subpaths to scan for counting skills
+    all_subpaths: &'static [&'static str],
 }
 
 const SUPPORTED_TOOLS: &[ToolConfig] = &[
-    // === Front-Runners ===
+    // Claude Code: ~/.claude/skills/
+    // Personal: ~/.claude/skills/, Project: .claude/skills/, Plugin: bundled
     ToolConfig {
         id: "claude",
         name: "Claude Code",
         config_paths: &[".claude"],
-        // Claude supports: commands/, skills/, and plugins/marketplaces/*/skills/
-        skills_subpaths: &["commands", "skills", "plugins/marketplaces"],
+        primary_subpath: "skills",
+        all_subpaths: &["skills", "commands"],
     },
-    ToolConfig {
-        id: "cursor",
-        name: "Cursor",
-        config_paths: &[".cursor"],
-        skills_subpaths: &["commands"],
-    },
+    // Codex: ~/.codex/skills/
+    // USER: ~/.codex/skills/, REPO: .codex/skills/, ADMIN: /etc/codex/skills/
     ToolConfig {
         id: "codex",
         name: "Codex (OpenAI)",
         config_paths: &[".codex"],
-        // Codex uses prompts/ for custom prompts and skills/ for skills
-        skills_subpaths: &["prompts", "skills"],
+        primary_subpath: "skills",
+        all_subpaths: &["skills", "prompts"],
     },
+    // Cursor: ~/.cursor/skills/
+    // Also supports .claude/skills/ for compatibility
     ToolConfig {
-        id: "copilot",
-        name: "GitHub Copilot",
-        config_paths: &[".config/github-copilot", ".github-copilot"],
-        skills_subpaths: &["instructions"],
+        id: "cursor",
+        name: "Cursor",
+        config_paths: &[".cursor"],
+        primary_subpath: "skills",
+        all_subpaths: &["skills", "rules", "commands"],
     },
+    // Cline: ~/.cline/skills/
+    // Global: ~/.cline/skills/, Project: .cline/skills/, also .claude/skills/ compatible
     ToolConfig {
         id: "cline",
         name: "Cline",
         config_paths: &[".cline"],
-        // Cline primarily uses .clinerules file, but we support commands/ for SkillHub
-        skills_subpaths: &["commands"],
+        primary_subpath: "skills",
+        all_subpaths: &["skills", "rules"],
     },
-    // === Runners-Up ===
+    // OpenCode: ~/.config/opencode/skills/
+    // Also supports .claude/skills/ for compatibility
     ToolConfig {
-        id: "roocode",
-        name: "RooCode",
-        config_paths: &[".roo", ".roocode"],
-        skills_subpaths: &["commands"],
+        id: "opencode",
+        name: "OpenCode",
+        config_paths: &[".config/opencode"],
+        primary_subpath: "skills",
+        all_subpaths: &["skills"],
     },
-    ToolConfig {
-        id: "windsurf",
-        name: "Windsurf",
-        config_paths: &[".windsurf", ".codeium/windsurf"],
-        // Windsurf uses .windsurfrules file, we support commands/ for SkillHub
-        skills_subpaths: &["commands"],
-    },
-    ToolConfig {
-        id: "aider",
-        name: "Aider",
-        config_paths: &[".aider"],
-        skills_subpaths: &["commands"],
-    },
-    ToolConfig {
-        id: "augment",
-        name: "Augment",
-        config_paths: &[".augment"],
-        skills_subpaths: &["commands"],
-    },
-    ToolConfig {
-        id: "continue",
-        name: "Continue",
-        config_paths: &[".continue"],
-        skills_subpaths: &["commands"],
-    },
+    // Gemini CLI: ~/.gemini/skills/
+    // Workspace: .gemini/skills/, User: ~/.gemini/skills/, Extension: bundled
     ToolConfig {
         id: "gemini",
         name: "Gemini CLI",
         config_paths: &[".gemini"],
-        skills_subpaths: &["commands"],
+        primary_subpath: "skills",
+        all_subpaths: &["skills"],
     },
-    ToolConfig {
-        id: "opencode",
-        name: "OpenCode",
-        // OpenCode uses ~/.config/opencode/ not ~/.opencode/
-        config_paths: &[".config/opencode"],
-        skills_subpaths: &["commands", "skill"],
-    },
-    // === Emerging ===
-    ToolConfig {
-        id: "kiro",
-        name: "AWS Kiro",
-        config_paths: &[".kiro"],
-        skills_subpaths: &["commands"],
-    },
+    // Kilo Code: ~/.kilocode/skills/
+    // Also has mode-specific: skills-code/, skills-architect/
     ToolConfig {
         id: "kilocode",
         name: "Kilo Code",
         config_paths: &[".kilocode", ".kilo"],
-        skills_subpaths: &["commands"],
+        primary_subpath: "skills",
+        all_subpaths: &["skills", "skills-code", "skills-architect"],
     },
+    // GitHub Copilot: IDE settings + .github/
+    ToolConfig {
+        id: "copilot",
+        name: "GitHub Copilot",
+        config_paths: &[".config/github-copilot"],
+        primary_subpath: "instructions",
+        all_subpaths: &["instructions"],
+    },
+    // Windsurf: ~/.windsurf/rules/
+    ToolConfig {
+        id: "windsurf",
+        name: "Windsurf",
+        config_paths: &[".windsurf", ".codeium/windsurf"],
+        primary_subpath: "rules",
+        all_subpaths: &["rules", "commands"],
+    },
+    // RooCode
+    ToolConfig {
+        id: "roocode",
+        name: "RooCode",
+        config_paths: &[".roo", ".roocode"],
+        primary_subpath: "skills",
+        all_subpaths: &["skills", "rules", "commands"],
+    },
+    // Aider
+    ToolConfig {
+        id: "aider",
+        name: "Aider",
+        config_paths: &[".aider"],
+        primary_subpath: ".",
+        all_subpaths: &["commands"],
+    },
+    // Augment
+    ToolConfig {
+        id: "augment",
+        name: "Augment",
+        config_paths: &[".augment"],
+        primary_subpath: "skills",
+        all_subpaths: &["skills", "rules", "commands"],
+    },
+    // Continue
+    ToolConfig {
+        id: "continue",
+        name: "Continue",
+        config_paths: &[".continue"],
+        primary_subpath: "rules",
+        all_subpaths: &["rules", "commands"],
+    },
+    // AWS Kiro
+    ToolConfig {
+        id: "kiro",
+        name: "AWS Kiro",
+        config_paths: &[".kiro"],
+        primary_subpath: "skills",
+        all_subpaths: &["skills", "rules", "commands"],
+    },
+    // Zencoder
     ToolConfig {
         id: "zencoder",
         name: "Zencoder",
         config_paths: &[".zencoder"],
-        skills_subpaths: &["commands"],
+        primary_subpath: "skills",
+        all_subpaths: &["skills", "rules", "commands"],
     },
-    // === IDEs ===
+    // Zed
     ToolConfig {
         id: "zed",
         name: "Zed",
         config_paths: &[".zed"],
-        skills_subpaths: &["commands"],
+        primary_subpath: "rules",
+        all_subpaths: &["rules", "commands"],
     },
+    // VS Code
     ToolConfig {
         id: "vscode",
         name: "VS Code",
         config_paths: &[".vscode"],
-        skills_subpaths: &["commands"],
+        primary_subpath: "rules",
+        all_subpaths: &["rules", "commands"],
     },
 ];
 
@@ -141,24 +183,26 @@ pub async fn detect_all_tools() -> Result<Vec<DetectedTool>, String> {
             if installed {
                 // Count skills from all supported subpaths
                 let mut total_skills = 0;
-                let mut primary_skills_dir = config_dir.join(tool.skills_subpaths[0]);
 
-                for skills_subpath in tool.skills_subpaths {
-                    let skills_dir = config_dir.join(skills_subpath);
+                for subpath in tool.all_subpaths {
+                    let skills_dir = config_dir.join(subpath);
                     if skills_dir.exists() {
                         total_skills += count_skills(&skills_dir).await.unwrap_or(0);
-                        // Use the first existing skills dir as primary
-                        if primary_skills_dir == config_dir.join(tool.skills_subpaths[0]) && skills_dir.exists() {
-                            primary_skills_dir = skills_dir;
-                        }
                     }
                 }
+
+                // Use the primary subpath for display
+                let primary_dir = if tool.primary_subpath == "." {
+                    config_dir.clone()
+                } else {
+                    config_dir.join(tool.primary_subpath)
+                };
 
                 detected.push(DetectedTool {
                     name: tool.name.to_string(),
                     id: tool.id.to_string(),
                     config_path: config_dir.to_string_lossy().to_string(),
-                    skills_path: primary_skills_dir.to_string_lossy().to_string(),
+                    skills_path: primary_dir.to_string_lossy().to_string(),
                     installed,
                     skills_count: total_skills,
                 });
@@ -171,13 +215,17 @@ pub async fn detect_all_tools() -> Result<Vec<DetectedTool>, String> {
     for tool in SUPPORTED_TOOLS {
         if !detected.iter().any(|d| d.id == tool.id) {
             let config_dir = home.join(tool.config_paths[0]);
-            let skills_dir = config_dir.join(tool.skills_subpaths[0]);
+            let primary_dir = if tool.primary_subpath == "." {
+                config_dir.clone()
+            } else {
+                config_dir.join(tool.primary_subpath)
+            };
 
             detected.push(DetectedTool {
                 name: tool.name.to_string(),
                 id: tool.id.to_string(),
                 config_path: config_dir.to_string_lossy().to_string(),
-                skills_path: skills_dir.to_string_lossy().to_string(),
+                skills_path: primary_dir.to_string_lossy().to_string(),
                 installed: false,
                 skills_count: 0,
             });
@@ -188,39 +236,7 @@ pub async fn detect_all_tools() -> Result<Vec<DetectedTool>, String> {
 }
 
 async fn count_skills(skills_dir: &PathBuf) -> Result<usize, String> {
-    let mut count = 0;
-
-    // Check if this is a marketplace directory (plugins/marketplaces)
-    if skills_dir.ends_with("plugins/marketplaces") {
-        // Scan marketplace subdirectories for skills
-        if let Ok(mut marketplaces) = fs::read_dir(skills_dir).await {
-            while let Ok(Some(marketplace)) = marketplaces.next_entry().await {
-                let marketplace_path = marketplace.path();
-                if marketplace_path.is_dir() {
-                    // Check for skills/ subdirectory in marketplace
-                    let skills_subdir = marketplace_path.join("skills");
-                    if skills_subdir.exists() {
-                        count += count_skills_in_dir(&skills_subdir).await;
-                    }
-                    // Also check for plugins/*/skills/ structure
-                    let plugins_dir = marketplace_path.join("plugins");
-                    if plugins_dir.exists() {
-                        if let Ok(mut plugins) = fs::read_dir(&plugins_dir).await {
-                            while let Ok(Some(plugin)) = plugins.next_entry().await {
-                                let plugin_skills = plugin.path().join("skills");
-                                if plugin_skills.exists() {
-                                    count += count_skills_in_dir(&plugin_skills).await;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-        count = count_skills_in_dir(skills_dir).await;
-    }
-
+    let count = count_skills_in_dir(skills_dir).await;
     Ok(count)
 }
 
@@ -230,6 +246,14 @@ async fn count_skills_in_dir(dir: &PathBuf) -> usize {
     if let Ok(mut entries) = fs::read_dir(dir).await {
         while let Ok(Some(entry)) = entries.next_entry().await {
             let path = entry.path();
+            // Skip hidden files/directories
+            if path.file_name()
+                .map(|n| n.to_string_lossy().starts_with('.'))
+                .unwrap_or(false)
+            {
+                continue;
+            }
+            
             if path.is_dir() {
                 // Check if it has SKILL.md
                 if path.join("SKILL.md").exists() {
@@ -261,19 +285,14 @@ pub async fn get_skills_for_tool(tool_id: &str) -> Result<Vec<InstalledSkill>, S
         }
 
         // Check all supported skills subpaths
-        for skills_subpath in tool.skills_subpaths {
-            let skills_dir = config_dir.join(skills_subpath);
+        for subpath in tool.all_subpaths {
+            let skills_dir = config_dir.join(subpath);
 
             if !skills_dir.exists() {
                 continue;
             }
 
-            // Handle marketplace directory specially
-            if *skills_subpath == "plugins/marketplaces" {
-                collect_marketplace_skills(&skills_dir, tool_id, &mut skills).await;
-            } else {
-                collect_skills_from_dir(&skills_dir, tool_id, &mut skills).await;
-            }
+            collect_skills_from_dir(&skills_dir, tool_id, &mut skills).await;
         }
         // Found config dir, stop looking at alternative config paths
         break 'outer;
@@ -286,6 +305,14 @@ async fn collect_skills_from_dir(skills_dir: &PathBuf, tool_id: &str, skills: &m
     if let Ok(mut entries) = fs::read_dir(skills_dir).await {
         while let Ok(Some(entry)) = entries.next_entry().await {
             let path = entry.path();
+            
+            // Skip hidden files/directories
+            if path.file_name()
+                .map(|n| n.to_string_lossy().starts_with('.'))
+                .unwrap_or(false)
+            {
+                continue;
+            }
 
             if path.is_dir() {
                 let skill_md = path.join("SKILL.md");
@@ -319,36 +346,6 @@ async fn collect_skills_from_dir(skills_dir: &PathBuf, tool_id: &str, skills: &m
                         author,
                         tool_id: tool_id.to_string(),
                     });
-                }
-            }
-        }
-    }
-}
-
-async fn collect_marketplace_skills(marketplaces_dir: &PathBuf, tool_id: &str, skills: &mut Vec<InstalledSkill>) {
-    if let Ok(mut marketplaces) = fs::read_dir(marketplaces_dir).await {
-        while let Ok(Some(marketplace)) = marketplaces.next_entry().await {
-            let marketplace_path = marketplace.path();
-            if !marketplace_path.is_dir() {
-                continue;
-            }
-
-            // Check for skills/ subdirectory in marketplace (e.g., anthropic-agent-skills/skills/)
-            let skills_subdir = marketplace_path.join("skills");
-            if skills_subdir.exists() {
-                collect_skills_from_dir(&skills_subdir, tool_id, skills).await;
-            }
-
-            // Also check for plugins/*/skills/ structure (e.g., claude-plugins-official/plugins/*/skills/)
-            let plugins_dir = marketplace_path.join("plugins");
-            if plugins_dir.exists() {
-                if let Ok(mut plugins) = fs::read_dir(&plugins_dir).await {
-                    while let Ok(Some(plugin)) = plugins.next_entry().await {
-                        let plugin_skills = plugin.path().join("skills");
-                        if plugin_skills.exists() {
-                            collect_skills_from_dir(&plugin_skills, tool_id, skills).await;
-                        }
-                    }
                 }
             }
         }
@@ -413,8 +410,12 @@ pub async fn install_skill_to_tools(
             .find(|t| t.id == tool_id)
             .ok_or_else(|| format!("Unknown tool: {}", tool_id))?;
 
-        // Use the first skills subpath for installation
-        let skills_dir = home.join(tool.config_paths[0]).join(tool.skills_subpaths[0]);
+        // Use the primary subpath for installation
+        let skills_dir = if tool.primary_subpath == "." {
+            home.join(tool.config_paths[0])
+        } else {
+            home.join(tool.config_paths[0]).join(tool.primary_subpath)
+        };
 
         // Create skills directory if it doesn't exist
         if !skills_dir.exists() {
@@ -439,6 +440,61 @@ pub async fn install_skill_to_tools(
     Ok(installed_paths)
 }
 
+/// Install a skill to a specific project directory
+pub async fn install_skill_to_project(
+    skill_content: &str,
+    skill_name: &str,
+    project_path: &str,
+    tool_id: &str,
+) -> Result<String, String> {
+    let project_dir = PathBuf::from(project_path);
+    
+    if !project_dir.exists() {
+        return Err(format!("Project directory does not exist: {}", project_path));
+    }
+
+    let tool = SUPPORTED_TOOLS
+        .iter()
+        .find(|t| t.id == tool_id)
+        .ok_or_else(|| format!("Unknown tool: {}", tool_id))?;
+
+    // Create a safe folder name from skill name
+    let folder_name = skill_name
+        .to_lowercase()
+        .replace(' ', "-")
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+        .collect::<String>();
+
+    // Build the project skills directory path
+    // e.g., /path/to/project/.claude/skills/skill-name/SKILL.md
+    let config_folder = tool.config_paths[0].trim_start_matches('.');
+    let skills_dir = if tool.primary_subpath == "." {
+        project_dir.join(config_folder)
+    } else {
+        project_dir.join(config_folder).join(tool.primary_subpath)
+    };
+
+    // Create skills directory if it doesn't exist
+    if !skills_dir.exists() {
+        fs::create_dir_all(&skills_dir)
+            .await
+            .map_err(|e| format!("Failed to create skills directory: {}", e))?;
+    }
+
+    let skill_dir = skills_dir.join(&folder_name);
+    fs::create_dir_all(&skill_dir)
+        .await
+        .map_err(|e| format!("Failed to create skill directory: {}", e))?;
+
+    let skill_file = skill_dir.join("SKILL.md");
+    fs::write(&skill_file, skill_content)
+        .await
+        .map_err(|e| format!("Failed to write skill file: {}", e))?;
+
+    Ok(skill_file.to_string_lossy().to_string())
+}
+
 pub async fn uninstall_skill(skill_path: &str) -> Result<(), String> {
     let path = PathBuf::from(skill_path);
 
@@ -458,6 +514,73 @@ pub async fn uninstall_skill(skill_path: &str) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+/// Install multiple files for a skill (supports multi-file skills)
+/// files: Vec<(relative_path, content)>
+pub async fn install_skill_files_to_tools(
+    files: &[(String, String)],
+    skill_name: &str,
+    tool_ids: &[String],
+) -> Result<Vec<String>, String> {
+    let home = get_home_dir().ok_or("Cannot find home directory")?;
+    let mut installed_paths = Vec::new();
+
+    // Create a safe folder name from skill name
+    let folder_name = skill_name
+        .to_lowercase()
+        .replace(' ', "-")
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+        .collect::<String>();
+
+    for tool_id in tool_ids {
+        let tool = SUPPORTED_TOOLS
+            .iter()
+            .find(|t| t.id == tool_id)
+            .ok_or_else(|| format!("Unknown tool: {}", tool_id))?;
+
+        // Use the primary subpath for installation
+        let skills_dir = if tool.primary_subpath == "." {
+            home.join(tool.config_paths[0])
+        } else {
+            home.join(tool.config_paths[0]).join(tool.primary_subpath)
+        };
+
+        // Create skills directory if it doesn't exist
+        if !skills_dir.exists() {
+            fs::create_dir_all(&skills_dir)
+                .await
+                .map_err(|e| format!("Failed to create skills directory: {}", e))?;
+        }
+
+        let skill_dir = skills_dir.join(&folder_name);
+        fs::create_dir_all(&skill_dir)
+            .await
+            .map_err(|e| format!("Failed to create skill directory: {}", e))?;
+
+        // Install each file
+        for (relative_path, content) in files {
+            let file_path = skill_dir.join(relative_path);
+            
+            // Create parent directories if needed
+            if let Some(parent) = file_path.parent() {
+                if !parent.exists() {
+                    fs::create_dir_all(parent)
+                        .await
+                        .map_err(|e| format!("Failed to create directory: {}", e))?;
+                }
+            }
+            
+            fs::write(&file_path, content)
+                .await
+                .map_err(|e| format!("Failed to write file {}: {}", relative_path, e))?;
+        }
+
+        installed_paths.push(skill_dir.to_string_lossy().to_string());
+    }
+
+    Ok(installed_paths)
 }
 
 /// Read skill content from a path (for syncing between tools)
@@ -562,14 +685,36 @@ async fn build_tree(path: &PathBuf, current_depth: usize, max_depth: usize) -> R
     let is_dir = path.is_dir();
 
     if !is_dir {
-        // It's a file - read content if it's a markdown file
-        let content = if path.extension().map(|e| e == "md").unwrap_or(false) {
+        // It's a file - read content for text files
+        let text_extensions = [
+            "md", "mdx", "txt", "json", "yaml", "yml", "toml", "ini", "xml",
+            "py", "js", "ts", "jsx", "tsx", "rs", "go", "rb", "java", "kt", "scala",
+            "c", "cpp", "h", "hpp", "cs", "php", "swift", "sh", "bash", "zsh",
+            "sql", "graphql", "css", "scss", "less", "html", "vue", "svelte",
+            "mdc", "cursorrules", "env", "gitignore", "dockerignore",
+        ];
+        
+        let should_read = path.extension()
+            .map(|e| text_extensions.contains(&e.to_string_lossy().to_lowercase().as_str()))
+            .unwrap_or(false)
+            || path.file_name()
+                .map(|n| {
+                    let name = n.to_string_lossy().to_lowercase();
+                    name == "dockerfile" || name == "makefile" || name == ".gitignore" || name == ".env"
+                })
+                .unwrap_or(false);
+        
+        let content = if should_read {
             fs::read_to_string(path).await.ok()
         } else {
             None
         };
 
-        let metadata = content.as_ref().map(|c| extract_metadata(c));
+        let metadata = if path.extension().map(|e| e == "md").unwrap_or(false) {
+            content.as_ref().map(|c| extract_metadata(c))
+        } else {
+            None
+        };
 
         return Ok(FileNode {
             name,
@@ -664,6 +809,276 @@ fn extract_metadata(content: &str) -> SkillMetadata {
         author,
         category,
     }
+}
+
+/// Tool directory info for a specific tool
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ToolDirectoryInfo {
+    pub name: String,
+    pub description: String,
+    pub path: String,
+    pub icon: String,
+    pub is_file: bool,
+    pub dir_type: String,
+    pub skill_count: usize,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ToolDirectories {
+    pub tool_id: String,
+    pub tool_name: String,
+    pub home: String,
+    pub config_path: String,
+    pub directories: Vec<ToolDirectoryInfo>,
+    pub installed: bool,
+}
+
+/// Get directory structure for a specific tool
+pub async fn get_tool_directories(tool_id: &str) -> Result<ToolDirectories, String> {
+    let home = get_home_dir().ok_or("Cannot find home directory")?;
+    
+    let tool = SUPPORTED_TOOLS
+        .iter()
+        .find(|t| t.id == tool_id)
+        .ok_or_else(|| format!("Unknown tool: {}", tool_id))?;
+    
+    let config_path = home.join(tool.config_paths[0]);
+    let installed = config_path.exists();
+    
+    // Helper to create directory info with skill count
+    async fn make_dir_info(
+        name: &str,
+        description: &str,
+        path: PathBuf,
+        icon: &str,
+        is_file: bool,
+        dir_type: &str,
+    ) -> ToolDirectoryInfo {
+        let skill_count = if is_file {
+            if path.exists() { 1 } else { 0 }
+        } else {
+            count_skills_in_dir(&path).await
+        };
+        
+        ToolDirectoryInfo {
+            name: name.to_string(),
+            description: description.to_string(),
+            path: path.to_string_lossy().to_string(),
+            icon: icon.to_string(),
+            is_file,
+            dir_type: dir_type.to_string(),
+            skill_count,
+        }
+    }
+    
+    let directories = match tool_id {
+        // Claude Code: ~/.claude/
+        // Personal: ~/.claude/skills/, Project: .claude/skills/, Plugins: ~/.claude/plugins/
+        "claude" => vec![
+            make_dir_info(
+                "Skills",
+                "Agent skills with SKILL.md files",
+                config_path.join("skills"),
+                "package",
+                false,
+                "skills",
+            ).await,
+            make_dir_info(
+                "Commands",
+                "Custom slash commands (/command-name)",
+                config_path.join("commands"),
+                "terminal",
+                false,
+                "commands",
+            ).await,
+            make_dir_info(
+                "Plugins",
+                "Bundled skills from installed plugins",
+                config_path.join("plugins"),
+                "puzzle",
+                false,
+                "plugins",
+            ).await,
+            make_dir_info(
+                "Memory (CLAUDE.md)",
+                "Personal preferences applied to all projects",
+                config_path.join("CLAUDE.md"),
+                "brain",
+                true,
+                "memory",
+            ).await,
+        ],
+        // Codex: ~/.codex/
+        // USER: ~/.codex/skills/, ADMIN: /etc/codex/skills/, SYSTEM: bundled
+        "codex" => vec![
+            make_dir_info(
+                "Skills",
+                "Agent skills - use $skill-installer to add more",
+                config_path.join("skills"),
+                "package",
+                false,
+                "skills",
+            ).await,
+            make_dir_info(
+                "Prompts",
+                "Custom prompts and templates",
+                config_path.join("prompts"),
+                "message-square",
+                false,
+                "prompts",
+            ).await,
+        ],
+        // Cursor: ~/.cursor/
+        // Also supports .claude/skills/ for compatibility
+        "cursor" => vec![
+            make_dir_info(
+                "Skills",
+                "Agent skills with SKILL.md files",
+                config_path.join("skills"),
+                "package",
+                false,
+                "skills",
+            ).await,
+            make_dir_info(
+                "Rules",
+                "Project rules (*.md or *.mdc)",
+                config_path.join("rules"),
+                "clipboard-list",
+                false,
+                "rules",
+            ).await,
+            make_dir_info(
+                "Commands",
+                "Custom commands",
+                config_path.join("commands"),
+                "terminal",
+                false,
+                "commands",
+            ).await,
+        ],
+        // Cline: ~/.cline/
+        // Global: ~/.cline/skills/, also .claude/skills/ compatible
+        "cline" => vec![
+            make_dir_info(
+                "Skills",
+                "Agent skills with SKILL.md files",
+                config_path.join("skills"),
+                "package",
+                false,
+                "skills",
+            ).await,
+            make_dir_info(
+                "Rules",
+                "Global rules (*.md files)",
+                config_path.join("rules"),
+                "clipboard-list",
+                false,
+                "rules",
+            ).await,
+        ],
+        // OpenCode: ~/.config/opencode/
+        // Also supports .claude/skills/ for compatibility
+        "opencode" => vec![
+            make_dir_info(
+                "Skills",
+                "Agent skills with SKILL.md files",
+                config_path.join("skills"),
+                "package",
+                false,
+                "skills",
+            ).await,
+        ],
+        // Gemini CLI: ~/.gemini/
+        // Workspace: .gemini/skills/, User: ~/.gemini/skills/, Extension: bundled
+        "gemini" => vec![
+            make_dir_info(
+                "Skills",
+                "User skills available across all workspaces",
+                config_path.join("skills"),
+                "package",
+                false,
+                "skills",
+            ).await,
+        ],
+        // Kilo Code: ~/.kilocode/
+        // Has mode-specific directories: skills-code/, skills-architect/
+        "kilocode" => vec![
+            make_dir_info(
+                "Skills",
+                "Generic skills for all modes",
+                config_path.join("skills"),
+                "package",
+                false,
+                "skills",
+            ).await,
+            make_dir_info(
+                "Skills (Code Mode)",
+                "Skills only for Code mode",
+                config_path.join("skills-code"),
+                "package",
+                false,
+                "skills-code",
+            ).await,
+            make_dir_info(
+                "Skills (Architect Mode)",
+                "Skills only for Architect mode",
+                config_path.join("skills-architect"),
+                "package",
+                false,
+                "skills-architect",
+            ).await,
+        ],
+        // GitHub Copilot
+        "copilot" => vec![
+            make_dir_info(
+                "Instructions",
+                "Custom instructions for Copilot",
+                config_path.join("instructions"),
+                "file-text",
+                false,
+                "instructions",
+            ).await,
+        ],
+        // Windsurf: ~/.windsurf/
+        "windsurf" => vec![
+            make_dir_info(
+                "Rules",
+                "Workspace rules with activation modes",
+                config_path.join("rules"),
+                "clipboard-list",
+                false,
+                "rules",
+            ).await,
+            make_dir_info(
+                "Commands",
+                "Custom commands",
+                config_path.join("commands"),
+                "terminal",
+                false,
+                "commands",
+            ).await,
+        ],
+        // Default structure for other tools
+        _ => vec![
+            make_dir_info(
+                "Skills",
+                &format!("Skills for {}", tool.name),
+                config_path.join("skills"),
+                "package",
+                false,
+                "skills",
+            ).await,
+        ],
+    };
+    
+    Ok(ToolDirectories {
+        tool_id: tool_id.to_string(),
+        tool_name: tool.name.to_string(),
+        home: home.to_string_lossy().to_string(),
+        config_path: config_path.to_string_lossy().to_string(),
+        directories,
+        installed,
+    })
 }
 
 /// Read a single file's content

@@ -1,45 +1,15 @@
 import { useState } from 'react'
-import { FolderOpen, ExternalLink, RefreshCw, Eye, Globe } from 'lucide-react'
-import { invoke } from '@tauri-apps/api/core'
+import { ExternalLink, Globe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useAppStore } from '../store'
-import { detectTools } from '../api/skillhub'
-import SkillsExplorer from '../components/SkillsExplorer'
 import { setLanguage, getLanguage } from '../i18n'
-import type { DetectedTool } from '../types'
 
 export default function Settings() {
-  const { tools, setTools, setToastMessage } = useAppStore()
   const { t } = useTranslation()
-
-  const [refreshing, setRefreshing] = useState(false)
-  const [exploringTool, setExploringTool] = useState<DetectedTool | null>(null)
   const [currentLang, setCurrentLang] = useState(getLanguage())
 
   const handleLanguageChange = (lang: string) => {
     setLanguage(lang)
     setCurrentLang(lang)
-  }
-
-  const handleRefreshTools = async () => {
-    setRefreshing(true)
-    try {
-      const newTools = await detectTools()
-      setTools(newTools)
-    } catch (error) {
-      console.error('Failed to refresh tools:', error)
-    } finally {
-      setRefreshing(false)
-    }
-  }
-
-  const openFolder = async (path: string) => {
-    try {
-      await invoke('open_folder', { path })
-    } catch (error) {
-      console.error('Failed to open folder:', error)
-      setToastMessage('Failed to open folder')
-    }
   }
 
   return (
@@ -80,62 +50,6 @@ export default function Settings() {
               {t('settings.chinese')}
             </button>
           </div>
-        </div>
-      </section>
-
-      {/* Detected Tools */}
-      <section className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="swiss-label">{t('settings.detectedTools')}</h2>
-          <button
-            onClick={handleRefreshTools}
-            disabled={refreshing}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-secondary border-2 border-transparent hover:border-foreground"
-          >
-            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-            {t('settings.refreshTools')}
-          </button>
-        </div>
-
-        <div className="card divide-y divide-border-light">
-          {tools.map(tool => (
-            <div key={tool.id} className="p-4 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-foreground">{tool.name}</span>
-                  {tool.installed ? (
-                    <span className="px-2 py-0.5 text-xs font-bold uppercase tracking-wider bg-foreground text-background">
-                      {t('settings.installed')}
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 text-xs font-bold uppercase tracking-wider bg-muted text-muted-foreground">
-                      {t('settings.notFound')}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground mt-1 font-mono">{tool.config_path}</p>
-              </div>
-
-              {tool.installed && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setExploringTool(tool)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-secondary border-2 border-transparent hover:border-foreground"
-                  >
-                    <Eye size={16} />
-                    {t('settings.viewSkills')}
-                  </button>
-                  <button
-                    onClick={() => openFolder(tool.skills_path)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-secondary border-2 border-transparent hover:border-foreground"
-                  >
-                    <FolderOpen size={16} />
-                    {t('settings.openFolder')}
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
         </div>
       </section>
 
@@ -200,14 +114,6 @@ export default function Settings() {
           </div>
         </div>
       </section>
-
-      {/* Skills Explorer Modal */}
-      {exploringTool && (
-        <SkillsExplorer
-          tool={exploringTool}
-          onClose={() => setExploringTool(null)}
-        />
-      )}
     </div>
   )
 }

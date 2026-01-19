@@ -5,7 +5,7 @@ import { useAppStore } from '../store'
 import { exchangeCodeForTokens, SKILLHUB_URL } from '../api/auth'
 
 export default function UserMenu() {
-  const { isAuthenticated, user, login, logout, setToastMessage, setFavorites, setCollections } = useAppStore()
+  const { isAuthenticated, user, login, logout, showToast, setFavorites, setCollections } = useAppStore()
   const [showMenu, setShowMenu] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [loginCode, setLoginCode] = useState('')
@@ -19,7 +19,7 @@ export default function UserMenu() {
       setShowLoginModal(true)
     } catch (error) {
       console.error('Failed to open browser:', error)
-      setToastMessage('Failed to open browser for login')
+      showToast('Failed to open browser for login', 'error')
     }
   }
 
@@ -74,10 +74,10 @@ export default function UserMenu() {
 
       setShowLoginModal(false)
       setLoginCode('')
-      setToastMessage(`Welcome, ${userData.name || userData.github_username}!`)
+      showToast(`Welcome, ${userData.name || userData.github_username}!`, 'success')
     } catch (error) {
       console.error('Login failed:', error)
-      setToastMessage('Login failed. Please try again.')
+      showToast('Login failed. Please try again.', 'error')
     } finally {
       setIsLoggingIn(false)
     }
@@ -86,7 +86,7 @@ export default function UserMenu() {
   const handleLogout = () => {
     logout()
     setShowMenu(false)
-    setToastMessage('Logged out successfully')
+    showToast('Logged out successfully', 'info')
   }
 
   if (!isAuthenticated) {

@@ -1,11 +1,12 @@
-import { Star, Download, ExternalLink, Eye, Zap, Loader2 } from 'lucide-react'
+import { Star, Download, ExternalLink, Eye, Loader2, Library } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { open } from '@tauri-apps/plugin-shell'
 import type { SkillHubSkill } from '../types'
 
 interface SkillCardProps {
   skill: SkillHubSkill
   onInstall: (skill: SkillHubSkill) => void
   onView?: (skill: SkillHubSkill) => void
-  onQuickInstall?: (skill: SkillHubSkill) => void
   installing?: boolean
 }
 
@@ -30,42 +31,61 @@ function getCategoryColor(category?: string) {
   }
 }
 
-export default function SkillCard({ skill, onInstall, onView, onQuickInstall, installing }: SkillCardProps) {
+export default function SkillCard({ skill, onInstall, onView, installing }: SkillCardProps) {
+  const { i18n } = useTranslation()
+  
+  // Select description based on current language
+  const description = i18n.language === 'zh' && skill.description_zh 
+    ? skill.description_zh 
+    : skill.description
+
   return (
     <div
-      className="card p-4 cursor-pointer"
+      className="card p-4 cursor-pointer flex flex-col overflow-hidden"
       onClick={() => onView?.(skill)}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-foreground truncate tracking-tight">{skill.name}</h3>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">by {skill.author}</p>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="font-bold text-foreground truncate tracking-tight">{skill.name}</h3>
+            {skill.is_aggregator && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded flex-shrink-0">
+                <Library size={10} />
+                Collection
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">by {skill.author}</p>
         </div>
         {skill.simple_rating && (
-          <span className={`px-2 py-0.5 text-xs font-bold uppercase ${getRatingBadge(skill.simple_rating)}`}>
+          <span className={`px-2 py-0.5 text-xs font-bold uppercase flex-shrink-0 ${getRatingBadge(skill.simple_rating)}`}>
             {skill.simple_rating}
           </span>
         )}
       </div>
 
-      <p className="text-sm text-muted-foreground line-clamp-2 mb-4 h-10">
-        {skill.description}
+      {/* Description */}
+      <p className="text-sm text-muted-foreground line-clamp-2 mb-3 min-h-[2.5rem]">
+        {description}
       </p>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm">
-          {skill.github_stars !== undefined && skill.github_stars > 0 && (
-            <span className="flex items-center gap-1 text-muted-foreground">
-              <Star size={14} className="text-yellow-500" />
-              {skill.github_stars.toLocaleString()}
-            </span>
-          )}
-          <span className={`tag text-white ${getCategoryColor(skill.category)}`}>
-            {skill.category}
+      {/* Meta info */}
+      <div className="flex items-center gap-2 text-sm mb-3 min-w-0">
+        {skill.github_stars !== undefined && skill.github_stars > 0 && (
+          <span className="flex items-center gap-1 text-muted-foreground flex-shrink-0">
+            <Star size={14} className="text-yellow-500" />
+            {skill.github_stars.toLocaleString()}
           </span>
-        </div>
+        )}
+        <span className={`tag text-white truncate max-w-[120px] ${getCategoryColor(skill.category)}`}>
+          {skill.category}
+        </span>
+      </div>
 
-        <div className="flex items-center gap-1">
+      {/* Actions - 使用 mt-auto 推到底部 */}
+      <div className="flex items-center justify-between gap-2 mt-auto pt-2 border-t border-border-light">
+        <div className="flex items-center">
           {onView && (
             <button
               onClick={(e) => {
@@ -78,45 +98,33 @@ export default function SkillCard({ skill, onInstall, onView, onQuickInstall, in
               <Eye size={16} />
             </button>
           )}
-          <a
-            href={skill.repo_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-            title="View on GitHub"
-          >
-            <ExternalLink size={16} />
-          </a>
-          {onQuickInstall && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onQuickInstall(skill)
-              }}
-              disabled={installing}
-              className="p-1.5 text-foreground hover:bg-secondary disabled:opacity-50 transition-colors"
-              title="Quick install to all tools"
-            >
-              {installing ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Zap size={16} />
-              )}
-            </button>
-          )}
           <button
             onClick={(e) => {
               e.stopPropagation()
-              onInstall(skill)
+              const skillhubUrl = import.meta.env.VITE_SKILLHUB_API_URL || 'https://www.skillhub.club'
+              open(`${skillhubUrl}/skills/${skill.slug}`).catch(console.error)
             }}
-            disabled={installing}
-            className="btn btn-primary py-1.5 px-3 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            title="View on SkillHub"
           >
-            <Download size={14} />
-            {installing ? 'Installing...' : 'Install'}
+            <ExternalLink size={16} />
           </button>
         </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onInstall(skill)
+          }}
+          disabled={installing}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider bg-foreground text-background border-2 border-foreground hover:bg-background hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-all flex-shrink-0"
+        >
+          {installing ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Download size={14} />
+          )}
+          <span>{installing ? '...' : 'Install'}</span>
+        </button>
       </div>
     </div>
   )

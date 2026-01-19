@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Search, Loader2, ExternalLink, ChevronDown, Zap } from 'lucide-react'
+import { Search, Loader2, ExternalLink, ChevronDown, ArrowUpDown, X } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
 import { useAppStore } from '../store'
-import { searchSkills, getCatalog, fetchSkillContent, installSkill, detectTools } from '../api/skillhub'
+import { searchSkills, getCatalog, smartInstallSkill, detectTools } from '../api/skillhub'
 import SkillCard from '../components/SkillCard'
 import SkillDetail from '../components/SkillDetail'
 import ToolSelector from '../components/ToolSelector'
@@ -13,6 +13,7 @@ const PAGE_SIZE = 12
 
 const CATEGORIES = [
   { id: 'all', label: 'All' },
+  { id: 'collections', label: 'Collections' },
   { id: 'development', label: 'Development' },
   { id: 'devops', label: 'DevOps' },
   { id: 'testing', label: 'Testing' },
@@ -21,6 +22,13 @@ const CATEGORIES = [
   { id: 'frontend', label: 'Frontend' },
   { id: 'backend', label: 'Backend' },
   { id: 'security', label: 'Security' },
+]
+
+const SORT_OPTIONS = [
+  { id: 'popular', label: 'Popular' },
+  { id: 'newest', label: 'Newest' },
+  { id: 'stars', label: 'Most Stars' },
+  { id: 'name', label: 'Name A-Z' },
 ]
 
 export default function Discover() {
@@ -33,12 +41,14 @@ export default function Discover() {
     setCatalogSkills,
     currentCategory,
     setCurrentCategory,
+    currentSortBy,
+    setCurrentSortBy,
     selectedToolIds,
     tools,
     setTools,
     isLoading,
     setIsLoading,
-    setToastMessage,
+    showToast,
   } = useAppStore()
 
   const [showInstallModal, setShowInstallModal] = useState(false)
@@ -54,20 +64,30 @@ export default function Discover() {
   // Get installed tools for quick install
   const installedTools = tools.filter(t => t.installed)
 
-  // Load catalog on mount and category change
+  // Load catalog on mount and category/sort change
   useEffect(() => {
     if (!searchQuery) {
       setCurrentPage(1)
       setIsLoading(true)
-      getCatalog(1, PAGE_SIZE, currentCategory === 'all' ? undefined : currentCategory, 'popular')
+      
+      // 如果选择了 collections 分类，传递 type=collections 参数获取聚合仓库
+      const categoryParam = currentCategory === 'all' || currentCategory === 'collections' 
+        ? undefined 
+        : currentCategory
+      const typeParam = currentCategory === 'collections' ? 'collections' : undefined
+      
+      getCatalog(1, PAGE_SIZE, categoryParam, currentSortBy, typeParam)
         .then(data => {
           setCatalogSkills(data.skills || [])
           setTotalPages(data.pagination?.totalPages || 1)
         })
-        .catch(console.error)
+        .catch((error) => {
+          console.error('Failed to load catalog:', error)
+          showToast('Failed to load skills catalog', 'error')
+        })
         .finally(() => setIsLoading(false))
     }
-  }, [currentCategory, searchQuery, setCatalogSkills, setIsLoading])
+  }, [currentCategory, searchQuery, currentSortBy, setCatalogSkills, setIsLoading, showToast])
 
   // Debounced search
   useEffect(() => {
@@ -80,12 +100,15 @@ export default function Discover() {
       setIsLoading(true)
       searchSkills(searchQuery, PAGE_SIZE)
         .then(setSearchResults)
-        .catch(console.error)
+        .catch((error) => {
+          console.error('Search failed:', error)
+          showToast('Search failed. Please try again.', 'error')
+        })
         .finally(() => setIsLoading(false))
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [searchQuery, setSearchResults, setIsLoading])
+  }, [searchQuery, setSearchResults, setIsLoading, showToast])
 
   // Load more
   const handleLoadMore = async () => {
@@ -94,12 +117,13 @@ export default function Discover() {
     setLoadingMore(true)
     try {
       const nextPage = currentPage + 1
-      const data = await getCatalog(nextPage, PAGE_SIZE, currentCategory === 'all' ? undefined : currentCategory, 'popular')
+      const data = await getCatalog(nextPage, PAGE_SIZE, currentCategory === 'all' ? undefined : currentCategory, currentSortBy)
       setCatalogSkills([...catalogSkills, ...(data.skills || [])])
       setCurrentPage(nextPage)
       setTotalPages(data.pagination?.totalPages || 1)
     } catch (error) {
       console.error('Failed to load more:', error)
+      showToast('Failed to load more skills', 'error')
     } finally {
       setLoadingMore(false)
     }
@@ -114,63 +138,63 @@ export default function Discover() {
   }
 
   const handleInstallClick = (skill: SkillHubSkill) => {
+    // 默认全选所有已安装的工具
+    if (installedTools.length > 0) {
+      const { selectAllTools } = useAppStore.getState()
+      selectAllTools()
+    }
     setSelectedSkill(skill)
     setShowInstallModal(true)
-  }
-
-  // Quick install to all tools
-  const handleQuickInstall = async (skill: SkillHubSkill) => {
-    if (installedTools.length === 0) {
-      setToastMessage('No AI tools detected')
-      return
-    }
-
-    setInstalling(true)
-    setSelectedSkill(skill)
-    try {
-      const content = await fetchSkillContent(skill.slug)
-      if (!content) {
-        throw new Error('Failed to fetch skill content')
-      }
-
-      const toolIds = installedTools.map(t => t.id)
-      await installSkill(content, skill.name, toolIds)
-
-      // Refresh tools to update counts
-      const newTools = await detectTools()
-      setTools(newTools)
-
-      setToastMessage(`Installed "${skill.name}" to all ${installedTools.length} tool(s)`)
-    } catch (error) {
-      console.error('Install failed:', error)
-      setToastMessage('Installation failed. Please try again.')
-    } finally {
-      setInstalling(false)
-      setSelectedSkill(null)
-    }
   }
 
   const handleInstall = async () => {
     if (!selectedSkill || selectedToolIds.length === 0) return
 
+    const { installTarget, projectPath } = useAppStore.getState()
+    
+    // Validate project path if installing to project
+    if (installTarget === 'project' && !projectPath) {
+      showToast('Please select a project folder first', 'warning')
+      return
+    }
+
     setInstalling(true)
     try {
-      const content = await fetchSkillContent(selectedSkill.slug)
-      if (!content) {
-        throw new Error('Failed to fetch skill content')
+      if (installTarget === 'project' && projectPath) {
+        // Install to project directory - for now, still use single file approach
+        // TODO: Support multi-file project install
+        const { invoke } = await import('@tauri-apps/api/core')
+        const { getSkillDetail } = await import('../api/skillhub')
+        const skill = await getSkillDetail(selectedSkill.slug)
+        const content = skill.skill_md_raw
+        
+        if (!content) {
+          throw new Error('No skill content available')
+        }
+        
+        for (const toolId of selectedToolIds) {
+          await invoke('install_skill_to_project', {
+            skill_content: content,
+            skill_name: selectedSkill.name,
+            project_path: projectPath,
+            tool_id: toolId,
+          })
+        }
+        showToast(`Installed "${selectedSkill.name}" to project`, 'success')
+      } else {
+        // Install to personal (global) directory using smart install
+        await smartInstallSkill(selectedSkill, selectedToolIds)
+        showToast(`Installed "${selectedSkill.name}" to ${selectedToolIds.length} tool(s)`, 'success')
       }
-
-      await installSkill(content, selectedSkill.name, selectedToolIds)
 
       // Refresh tools to update counts
       const newTools = await detectTools()
       setTools(newTools)
 
-      setToastMessage(`Installed "${selectedSkill.name}" to ${selectedToolIds.length} tool(s)`)
       setShowInstallModal(false)
     } catch (error) {
       console.error('Install failed:', error)
-      setToastMessage('Installation failed. Please try again.')
+      showToast('Installation failed. Please try again.', 'error')
     } finally {
       setInstalling(false)
     }
@@ -199,22 +223,48 @@ export default function Discover() {
         />
       </div>
 
-      {/* Categories */}
+      {/* Categories & Sort */}
       {!searchQuery && (
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setCurrentCategory(cat.id)}
-              className={`px-4 py-2 text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all border-2 ${
-                currentCategory === cat.id
-                  ? 'bg-foreground text-background border-foreground'
-                  : 'bg-background text-foreground border-border-light hover:border-foreground'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
+        <div className="space-y-4 mb-6">
+          {/* Categories */}
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setCurrentCategory(cat.id)}
+                className={`px-4 py-2 text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all border-2 ${
+                  currentCategory === cat.id
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'bg-background text-foreground border-border-light hover:border-foreground'
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+          
+          {/* Sort */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+              <ArrowUpDown size={14} />
+              Sort by:
+            </span>
+            <div className="flex gap-2">
+              {SORT_OPTIONS.map(option => (
+                <button
+                  key={option.id}
+                  onClick={() => setCurrentSortBy(option.id)}
+                  className={`px-3 py-1 text-xs font-semibold uppercase tracking-wider transition-all border ${
+                    currentSortBy === option.id
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'bg-background text-muted-foreground border-border-light hover:border-foreground hover:text-foreground'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -236,7 +286,6 @@ export default function Discover() {
                 skill={skill}
                 onInstall={handleInstallClick}
                 onView={setViewingSkill}
-                onQuickInstall={installedTools.length > 0 ? handleQuickInstall : undefined}
                 installing={installing && selectedSkill?.id === skill.id}
               />
             ))}
@@ -282,31 +331,37 @@ export default function Discover() {
 
       {/* Install Modal */}
       {showInstallModal && selectedSkill && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-background border-2 border-foreground p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-bold mb-2 tracking-tight">INSTALL SKILL</h2>
-            <p className="text-muted-foreground mb-4">
-              Installing <strong className="text-foreground">{selectedSkill.name}</strong>
-            </p>
-
-            <ToolSelector />
-
-            {/* Quick Install All Button */}
-            {installedTools.length > 1 && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowInstallModal(false)}
+        >
+          <div 
+            className="bg-background border-2 border-foreground w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header with close button */}
+            <div className="flex items-center justify-between p-4 border-b-2 border-border-light">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight">INSTALL SKILL</h2>
+                <p className="text-sm text-muted-foreground">
+                  {selectedSkill.name}
+                </p>
+              </div>
               <button
-                onClick={() => {
-                  // Select all installed tools
-                  const { selectAllTools } = useAppStore.getState()
-                  selectAllTools()
-                }}
-                className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-secondary border-2 border-border-light"
+                onClick={() => setShowInstallModal(false)}
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
               >
-                <Zap size={16} />
-                Select All {installedTools.length} Tools
+                <X size={20} />
               </button>
-            )}
+            </div>
 
-            <div className="flex gap-3 mt-6">
+            {/* Content */}
+            <div className="p-4">
+              <ToolSelector showInstallTarget />
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-3 p-4 border-t-2 border-border-light">
               <button
                 onClick={() => setShowInstallModal(false)}
                 className="btn btn-secondary flex-1"

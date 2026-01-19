@@ -28,7 +28,9 @@ export interface SkillHubSkill {
   github_stars?: number
   repo_url: string
   skill_md_raw?: string
+  skill_path?: string | null // Path within the repo for the skill directory
   tags?: string[]
+  is_aggregator?: boolean
 }
 
 export interface CatalogResponse {
@@ -47,6 +49,28 @@ export interface SearchResponse {
 }
 
 export type SortOption = 'popular' | 'recent' | 'score' | 'stars'
+
+// Skill file tree types
+export interface SkillFileNode {
+  name: string
+  path: string
+  type: 'file' | 'folder'
+  size?: number
+  children?: SkillFileNode[]
+}
+
+export interface SkillFilesResponse {
+  skill_id: string
+  repo_url: string
+  skill_path: string | null
+  branch: string
+  tree: SkillFileNode[]
+  stats: {
+    total_files: number
+    total_folders: number
+    total_size: number
+  }
+}
 
 // Auth types
 export interface User {
@@ -79,6 +103,8 @@ export interface SkillCollection {
   updatedAt: string
   skills: SkillHubSkill[]
 }
+
+
 
 // File tree types for Skills Explorer
 export interface SkillFileMetadata {
