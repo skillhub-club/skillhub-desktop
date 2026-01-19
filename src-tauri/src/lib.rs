@@ -62,6 +62,27 @@ async fn install_skill(
     tools::install_skill_to_tools(&skill_content, &skill_name, &tool_ids).await
 }
 
+// Install multiple files for a skill (supports multi-file skills from GitHub)
+#[tauri::command]
+async fn install_skill_files(
+    files: Vec<(String, String)>,
+    skill_name: String,
+    tool_ids: Vec<String>,
+) -> Result<Vec<String>, String> {
+    tools::install_skill_files_to_tools(&files, &skill_name, &tool_ids).await
+}
+
+// Install a skill to a specific project directory
+#[tauri::command]
+async fn install_skill_to_project(
+    skill_content: String,
+    skill_name: String,
+    project_path: String,
+    tool_id: String,
+) -> Result<String, String> {
+    tools::install_skill_to_project(&skill_content, &skill_name, &project_path, &tool_id).await
+}
+
 // Uninstall a skill from a specific tool
 #[tauri::command]
 async fn uninstall_skill(skill_path: String) -> Result<(), String> {
@@ -119,6 +140,7 @@ async fn get_catalog(
     limit: Option<i32>,
     category: Option<String>,
     sort_by: Option<String>,
+    r#type: Option<String>, // "collections" for aggregator repos
 ) -> Result<serde_json::Value, String> {
     let client = reqwest::Client::new();
     let base_url = get_api_base_url();
@@ -135,6 +157,9 @@ async fn get_catalog(
     }
     if let Some(sort) = sort_by {
         url.push_str(&format!("&sortBy={}", sort));
+    }
+    if let Some(t) = r#type {
+        url.push_str(&format!("&type={}", t));
     }
 
     let response = client
@@ -171,6 +196,54 @@ async fn get_skill_detail(slug: String) -> Result<serde_json::Value, String> {
     Ok(data)
 }
 
+// Get skill files tree structure from SkillHub API
+#[tauri::command]
+async fn get_skill_files(skill_id: String) -> Result<serde_json::Value, String> {
+    let client = reqwest::Client::new();
+    let base_url = get_api_base_url();
+
+    let response = client
+        .get(&format!("{}/api/v1/skills/{}/files", base_url, skill_id))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to get skill files: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("Failed to get skill files: HTTP {}", response.status()));
+    }
+
+    let data: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+
+    Ok(data)
+}
+
+// Get file content from GitHub (proxied through SkillHub API)
+#[tauri::command]
+async fn get_remote_file_content(raw_url: String) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let base_url = get_api_base_url();
+
+    let response = client
+        .get(&format!("{}/api/v1/skills/file-content?url={}", base_url, urlencoding::encode(&raw_url)))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch file content: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("Failed to fetch file content: HTTP {}", response.status()));
+    }
+
+    let content = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response: {}", e))?;
+
+    Ok(content)
+}
+
 // Open a folder in the system file explorer
 #[tauri::command]
 fn open_folder(path: String) -> Result<(), String> {
@@ -189,6 +262,43 @@ async fn read_file(path: String) -> Result<String, String> {
     tools::read_file_content(&path).await
 }
 
+// Claude Code directory structure info
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClaudeDirectories {
+    pub home: String,
+    pub personal_skills: String,      // ~/.claude/skills/
+    pub personal_rules: String,       // ~/.claude/rules/
+    pub personal_memory: String,      // ~/.claude/CLAUDE.md
+    pub personal_commands: String,    // ~/.claude/commands/
+}
+
+// Get Claude Code directory paths
+#[tauri::command]
+fn get_claude_directories() -> Result<ClaudeDirectories, String> {
+    let home = dirs::home_dir().ok_or("Cannot find home directory")?;
+    let claude_dir = home.join(".claude");
+    
+    Ok(ClaudeDirectories {
+        home: home.to_string_lossy().to_string(),
+        personal_skills: claude_dir.join("skills").to_string_lossy().to_string(),
+        personal_rules: claude_dir.join("rules").to_string_lossy().to_string(),
+        personal_memory: claude_dir.join("CLAUDE.md").to_string_lossy().to_string(),
+        personal_commands: claude_dir.join("commands").to_string_lossy().to_string(),
+    })
+}
+
+// Check if a path exists
+#[tauri::command]
+fn check_path_exists(path: String) -> bool {
+    std::path::Path::new(&path).exists()
+}
+
+// Get directory structure for a specific AI coding tool
+#[tauri::command]
+async fn get_tool_directories(tool_id: String) -> Result<tools::ToolDirectories, String> {
+    tools::get_tool_directories(&tool_id).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -199,14 +309,21 @@ pub fn run() {
             detect_tools,
             get_installed_skills,
             install_skill,
+            install_skill_files,
+            install_skill_to_project,
             uninstall_skill,
             read_skill_content,
             search_skills,
             get_catalog,
             get_skill_detail,
+            get_skill_files,
+            get_remote_file_content,
             open_folder,
             get_folder_tree,
             read_file,
+            get_claude_directories,
+            check_path_exists,
+            get_tool_directories,
         ])
         .setup(|app| {
             // Create tray menu

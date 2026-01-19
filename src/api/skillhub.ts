@@ -3,8 +3,14 @@ import type {
   DetectedTool,
   InstalledSkill,
   SkillHubSkill,
-  CatalogResponse
+  CatalogResponse,
+  SkillFilesResponse
 } from '../types'
+
+// Get the API base URL
+function getApiBaseUrl(): string {
+  return import.meta.env.VITE_SKILLHUB_API_URL || 'https://www.skillhub.club'
+}
 
 // Detect all supported AI coding tools on the system
 export async function detectTools(): Promise<DetectedTool[]> {
@@ -48,9 +54,10 @@ export async function getCatalog(
   page?: number,
   limit?: number,
   category?: string,
-  sortBy?: string
+  sortBy?: string,
+  type?: string // "collections" for aggregator repos
 ): Promise<CatalogResponse> {
-  return invoke('get_catalog', { page, limit, category, sortBy })
+  return invoke('get_catalog', { page, limit, category, sortBy, type })
 }
 
 // Get skill detail from SkillHub API
@@ -59,10 +66,208 @@ export async function getSkillDetail(slug: string): Promise<SkillHubSkill> {
   return data.skill
 }
 
+// GitHub file type
+export interface GitHubFile {
+  path: string
+  content: string
+}
+
+// Parse repo URL to get owner, repo, and optional skill path
+// Supports formats like:
+// - https://github.com/owner/repo
+// - https://github.com/owner/repo#skills~skill-name (skill path in hash)
+// - https://github.com/owner/repo/tree/main/path/to/skill
+function parseRepoUrl(repoUrl: string): { owner: string; repo: string; skillPath?: string } | null {
+  // First, extract skill path from hash (e.g., #skills~skill-name -> skills/skill-name)
+  let skillPath: string | undefined
+  const hashMatch = repoUrl.match(/#(.+)$/)
+  if (hashMatch) {
+    // Convert ~ to / for path (e.g., "skills~skill-creator" -> "skills/skill-creator")
+    skillPath = hashMatch[1].replace(/~/g, '/')
+    repoUrl = repoUrl.replace(/#.+$/, '') // Remove hash from URL
+  }
+
+  // Parse owner and repo
+  const match = repoUrl.match(/github\.com\/([^/]+)\/([^/#]+)/)
+  if (!match) return null
+  
+  return { 
+    owner: match[1], 
+    repo: match[2].replace(/\.git$/, ''),
+    skillPath 
+  }
+}
+
+// Recursively fetch all files from a GitHub directory
+export async function fetchGitHubDirectory(
+  owner: string,
+  repo: string,
+  path: string,
+  branch = 'main',
+  basePath?: string
+): Promise<GitHubFile[]> {
+  const rootPath = basePath || path
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
+  
+  try {
+    const res = await fetch(apiUrl)
+    if (!res.ok) {
+      // Try master branch if main fails
+      if (branch === 'main') {
+        return fetchGitHubDirectory(owner, repo, path, 'master', basePath)
+      }
+      return []
+    }
+
+    const items = await res.json()
+    const files: GitHubFile[] = []
+
+    for (const item of items) {
+      if (item.type === 'file') {
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${item.path}`
+        try {
+          const fileRes = await fetch(rawUrl)
+          if (fileRes.ok) {
+            const content = await fileRes.text()
+            // Get relative path from the root skill folder
+            const relativePath = item.path.startsWith(rootPath + '/')
+              ? item.path.slice(rootPath.length + 1)
+              : item.name
+            files.push({ path: relativePath, content })
+          }
+        } catch {
+          // Skip failed files
+        }
+      } else if (item.type === 'dir') {
+        const subFiles = await fetchGitHubDirectory(owner, repo, item.path, branch, rootPath)
+        files.push(...subFiles)
+      }
+    }
+
+    return files
+  } catch {
+    return []
+  }
+}
+
+// Fetch all files for a skill from GitHub
+export async function fetchSkillFilesFromGitHub(
+  repoUrl: string,
+  skillPath?: string | null
+): Promise<GitHubFile[]> {
+  const parsed = parseRepoUrl(repoUrl)
+  if (!parsed) return []
+
+  // Use skillPath from argument, or from URL hash, or empty string
+  const path = skillPath || parsed.skillPath || ''
+  console.log('[fetchSkillFilesFromGitHub] Fetching from:', parsed.owner, parsed.repo, path)
+  return fetchGitHubDirectory(parsed.owner, parsed.repo, path)
+}
+
 // Fetch skill content (SKILL.md) for installation
 export async function fetchSkillContent(slug: string): Promise<string> {
   const skill = await getSkillDetail(slug)
   return skill.skill_md_raw || ''
+}
+
+// Install multiple files for a skill (supports multi-file skills)
+export async function installSkillFiles(
+  files: GitHubFile[],
+  skillName: string,
+  toolIds: string[]
+): Promise<string[]> {
+  // Convert GitHubFile[] to [path, content][] for Rust
+  const filesTuples: [string, string][] = files.map(f => [f.path, f.content])
+  return invoke('install_skill_files', { files: filesTuples, skillName, toolIds })
+}
+
+// Smart install that uses GitHub direct download for multi-file skills
+// Falls back to skill_md_raw for single-file skills
+export async function smartInstallSkill(
+  skill: { 
+    name: string
+    slug: string
+    repo_url?: string
+    skill_path?: string | null
+    skill_md_raw?: string 
+  },
+  toolIds: string[]
+): Promise<void> {
+  // Create a safe folder name from skill name
+  const folderName = skill.name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim() || skill.slug.split('-').slice(-1)[0] || 'skill'
+
+  console.log('[smartInstallSkill] Installing:', skill.name, 'to folder:', folderName)
+  console.log('[smartInstallSkill] repo_url:', skill.repo_url)
+
+  // Try to fetch all files from GitHub directly
+  if (skill.repo_url) {
+    try {
+      const files = await fetchSkillFilesFromGitHub(skill.repo_url, skill.skill_path)
+      console.log('[smartInstallSkill] Fetched files:', files.length)
+      
+      if (files.length > 0) {
+        // Normalize file paths - ensure SKILL.md is at root with correct case
+        const normalizedFiles = files.map(f => {
+          let path = f.path
+          if (path.toLowerCase() === 'skill.md') {
+            path = 'SKILL.md'
+          }
+          return { path, content: f.content }
+        })
+        
+        console.log('[smartInstallSkill] Installing files:', normalizedFiles.map(f => f.path))
+        await installSkillFiles(normalizedFiles, folderName, toolIds)
+        return
+      }
+    } catch (error) {
+      console.error('[smartInstallSkill] GitHub fetch failed:', error)
+    }
+  }
+
+  // Fallback: get full skill detail and use skill_md_raw
+  console.log('[smartInstallSkill] Falling back to skill_md_raw')
+  let skillMdRaw = skill.skill_md_raw
+  
+  if (!skillMdRaw) {
+    // Fetch full skill detail to get skill_md_raw
+    const fullSkill = await getSkillDetail(skill.slug)
+    skillMdRaw = fullSkill.skill_md_raw
+  }
+  
+  if (skillMdRaw) {
+    await installSkill(skillMdRaw, folderName, toolIds)
+    return
+  }
+
+  throw new Error('No skill content available')
+}
+
+// Get skill file tree structure
+export async function getSkillFiles(skillId: string): Promise<SkillFilesResponse> {
+  return invoke('get_skill_files', { skillId })
+}
+
+// Get file content from GitHub (proxied through Rust backend)
+export async function getFileContent(rawUrl: string): Promise<string> {
+  return invoke('get_remote_file_content', { rawUrl })
+}
+
+// Build raw GitHub URL for a file
+export function buildRawGitHubUrl(repoUrl: string, branch: string, filePath: string, skillPath?: string | null): string {
+  // Convert https://github.com/owner/repo to https://raw.githubusercontent.com/owner/repo/branch/path
+  const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/)
+  if (!match) throw new Error('Invalid GitHub URL')
+  
+  const [, owner, repo] = match
+  const cleanRepo = repo.replace(/\.git$/, '')
+  const fullPath = skillPath ? `${skillPath}/${filePath}` : filePath
+  
+  return `https://raw.githubusercontent.com/${owner}/${cleanRepo}/${branch}/${fullPath}`
 }
 
 // AI Skill Generation Types
@@ -94,12 +299,6 @@ export interface TrackGenerationRequest {
     modification_ratio?: number
     tool_used?: string
   }
-}
-
-// Get the API base URL
-function getApiBaseUrl(): string {
-  // Use environment variable or default to production
-  return import.meta.env.VITE_SKILLHUB_API_URL || 'https://www.skillhub.club'
 }
 
 // Generate skill using AI (SSE streaming)

@@ -24,7 +24,7 @@ export default function AIGenerateDialog({
   onApply,
   category,
 }: AIGenerateDialogProps) {
-  const { isAuthenticated, accessToken, setToastMessage } = useAppStore()
+  const { isAuthenticated, accessToken, showToast } = useAppStore()
 
   const [description, setDescription] = useState('')
   const [language, setLanguage] = useState('en')
@@ -63,7 +63,7 @@ export default function AIGenerateDialog({
 
   const handleGenerate = async () => {
     if (!isAuthenticated || !accessToken) {
-      setToastMessage('Please login to use AI generation')
+      showToast('Please login to use AI generation', 'warning')
       return
     }
 

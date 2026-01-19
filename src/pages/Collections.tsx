@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Folder, ExternalLink, Download, Loader2, ChevronDown, ChevronRight } from 'lucide-react'
+import { Folder, ExternalLink, Download, Loader2, ChevronDown, ChevronRight, Link2, FileDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { save } from '@tauri-apps/plugin-dialog'
+import { writeTextFile } from '@tauri-apps/plugin-fs'
 import { useAppStore } from '../store'
 import { fetchCollections as apiFetchCollections, SKILLHUB_URL } from '../api/auth'
+import { smartInstallSkill } from '../api/skillhub'
 import type { SkillCollection, SkillHubSkill } from '../types'
 
 export default function Collections() {
-  const { isAuthenticated, collections, setCollections, tools, setToastMessage, logout } = useAppStore()
+  const { t } = useTranslation()
+  const { isAuthenticated, collections, setCollections, tools, showToast, logout } = useAppStore()
   const [isLoading, setIsLoading] = useState(false)
   const [installingId, setInstallingId] = useState<string | null>(null)
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set())
@@ -24,10 +29,10 @@ export default function Collections() {
     } catch (error) {
       console.error('Failed to fetch collections:', error)
       if ((error as Error).message === 'Not authenticated' || (error as Error).message === 'Authentication failed') {
-        setToastMessage('Session expired. Please sign in again.')
+        showToast(t('collections.sessionExpired'), 'warning')
         logout()
       } else {
-        setToastMessage('Failed to load collections')
+        showToast(t('collections.failedToLoad'), 'error')
       }
     } finally {
       setIsLoading(false)
@@ -49,26 +54,22 @@ export default function Collections() {
   const handleInstallSkill = async (skill: SkillHubSkill) => {
     const installedTools = tools.filter(t => t.installed)
     if (installedTools.length === 0) {
-      setToastMessage('No AI tools detected. Please install one first.')
+      showToast(t('collections.noToolsDetected'), 'warning')
       return
     }
 
     setInstallingId(skill.id)
     try {
-      const { invoke } = await import('@tauri-apps/api/core')
-
-      for (const tool of installedTools) {
-        await invoke('install_skill', {
-          toolId: tool.id,
-          skillName: skill.slug,
-          skillContent: skill.skill_md_raw || `# ${skill.name}\n\n${skill.description}`,
-        })
-      }
-
-      setToastMessage(`Installed "${skill.name}" to ${installedTools.length} tool(s)`)
+      const toolIds = installedTools.map(t => t.id)
+      await smartInstallSkill(skill, toolIds)
+      showToast(t('collections.installed', { name: skill.name, count: installedTools.length }), 'success')
     } catch (error) {
       console.error('Install failed:', error)
-      setToastMessage('Failed to install skill')
+      if ((error as Error).message === 'No skill content available') {
+        showToast(t('collections.noSkillContent'), 'warning')
+      } else {
+        showToast(t('collections.installFailed'), 'error')
+      }
     } finally {
       setInstallingId(null)
     }
@@ -77,46 +78,99 @@ export default function Collections() {
   const handleInstallCollection = async (collection: SkillCollection) => {
     const installedTools = tools.filter(t => t.installed)
     if (installedTools.length === 0) {
-      setToastMessage('No AI tools detected. Please install one first.')
+      showToast(t('collections.noToolsDetected'), 'warning')
       return
     }
 
     if (collection.skills.length === 0) {
-      setToastMessage('This collection has no skills to install.')
+      showToast(t('collections.noSkillsInCollection'), 'info')
       return
     }
 
     setInstallingId(collection.id)
     try {
-      const { invoke } = await import('@tauri-apps/api/core')
+      const toolIds = installedTools.map(t => t.id)
+      let installedCount = 0
 
       for (const skill of collection.skills) {
-        for (const tool of installedTools) {
-          await invoke('install_skill', {
-            toolId: tool.id,
-            skillName: skill.slug,
-            skillContent: skill.skill_md_raw || `# ${skill.name}\n\n${skill.description}`,
-          })
+        try {
+          await smartInstallSkill(skill, toolIds)
+          installedCount++
+        } catch (err) {
+          console.error(`Failed to install skill ${skill.name}:`, err)
         }
       }
 
-      setToastMessage(`Installed ${collection.skills.length} skill(s) from "${collection.name}"`)
+      if (installedCount > 0) {
+        showToast(t('collections.installedCollection', { count: installedCount, name: collection.name }), 'success')
+      } else {
+        showToast(t('collections.installFailed'), 'error')
+      }
     } catch (error) {
       console.error('Install failed:', error)
-      setToastMessage('Failed to install collection')
+      showToast(t('collections.installFailed'), 'error')
     } finally {
       setInstallingId(null)
     }
   }
 
+  const handleCopyLink = async (skill: SkillHubSkill) => {
+    const url = `${SKILLHUB_URL}/skills/${skill.slug}`
+    try {
+      await navigator.clipboard.writeText(url)
+      showToast(t('collections.linkCopied'), 'success')
+    } catch (error) {
+      console.error('Failed to copy:', error)
+      showToast(t('collections.copyFailed'), 'error')
+    }
+  }
+
+  const handleExportSkill = async (skill: SkillHubSkill) => {
+    try {
+      const content = skill.skill_md_raw || `---
+name: "${skill.name}"
+description: "${skill.description}"
+author: "${skill.author}"
+---
+
+# ${skill.name}
+
+${skill.description}
+`
+      // Create a safe filename from skill name
+      const skillFolderName = skill.name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim() || skill.slug.split('-').slice(-1)[0] || 'skill'
+      const filePath = await save({
+        defaultPath: `${skillFolderName}-SKILL.md`,
+        filters: [{ name: 'Markdown', extensions: ['md'] }],
+      })
+
+      if (filePath) {
+        await writeTextFile(filePath, content)
+        showToast(t('collections.exported', { name: skill.name }), 'success')
+      }
+    } catch (error) {
+      console.error('Export failed:', error)
+      showToast(t('collections.exportFailed'), 'error')
+    }
+  }
+
+  const openInBrowser = (url: string) => {
+    window.open(url, '_blank')
+  }
+
   if (!isAuthenticated) {
     return (
-      <div className="p-6">
+      <div className="p-6 max-w-5xl">
         <div className="text-center py-16">
-          <Folder size={48} className="mx-auto text-gray-300 mb-4" />
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">Sign in to view collections</h2>
-          <p className="text-gray-500">
-            Sign in with your SkillHub account to sync and manage your skill collections.
+          <Folder size={48} className="mx-auto text-muted-foreground mb-4" />
+          <h2 className="text-xl font-bold text-foreground mb-2">{t('collections.signInTitle')}</h2>
+          <p className="text-muted-foreground">
+            {t('collections.signInDesc')}
           </p>
         </div>
       </div>
@@ -124,40 +178,37 @@ export default function Collections() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-5xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Collections</h1>
-          <p className="text-gray-500 mt-1">Your curated skill collections from SkillHub</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2 tracking-tight">{t('collections.title').toUpperCase()}</h1>
+          <p className="text-muted-foreground">{t('collections.subtitle')}</p>
         </div>
         <button
           onClick={loadCollections}
           disabled={isLoading}
-          className="px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-semibold bg-secondary text-foreground hover:bg-secondary/80 disabled:opacity-50 transition-colors"
         >
-          {isLoading ? 'Syncing...' : 'Sync'}
+          {isLoading ? t('collections.syncing') : t('collections.sync')}
         </button>
       </div>
 
       {isLoading && collections.length === 0 ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="animate-spin text-gray-400" size={32} />
+          <Loader2 className="animate-spin text-foreground" size={32} />
         </div>
       ) : collections.length === 0 ? (
         <div className="text-center py-16">
-          <Folder size={48} className="mx-auto text-gray-300 mb-4" />
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">No collections yet</h2>
-          <p className="text-gray-500">
-            Visit{' '}
-            <a
-              href={`${SKILLHUB_URL}/app/collections`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary-600 hover:underline"
+          <Folder size={48} className="mx-auto text-muted-foreground mb-4" />
+          <h2 className="text-xl font-bold text-foreground mb-2">{t('collections.noCollections')}</h2>
+          <p className="text-muted-foreground">
+            {t('collections.visitSkillHub')}{' '}
+            <button
+              onClick={() => openInBrowser(`${SKILLHUB_URL}/app/collections`)}
+              className="text-foreground underline underline-offset-4 hover:decoration-2"
             >
               SkillHub
-            </a>{' '}
-            to create skill collections.
+            </button>
           </p>
         </div>
       ) : (
@@ -165,31 +216,31 @@ export default function Collections() {
           {collections.map((collection) => (
             <div
               key={collection.id}
-              className="bg-white rounded-xl border border-gray-200 overflow-hidden"
+              className="card overflow-hidden"
             >
               {/* Collection Header */}
               <div
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+                className="flex items-center justify-between p-4 cursor-pointer hover:bg-secondary/30 transition-colors"
                 onClick={() => toggleCollection(collection.id)}
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   {expandedCollections.has(collection.id) ? (
-                    <ChevronDown size={20} className="text-gray-400 shrink-0" />
+                    <ChevronDown size={20} className="text-muted-foreground shrink-0" />
                   ) : (
-                    <ChevronRight size={20} className="text-gray-400 shrink-0" />
+                    <ChevronRight size={20} className="text-muted-foreground shrink-0" />
                   )}
-                  <Folder size={20} className="text-primary-500 shrink-0" />
+                  <Folder size={20} className="text-foreground shrink-0" />
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate">
+                    <h3 className="font-bold text-foreground truncate">
                       {collection.name}
                     </h3>
                     {collection.description && (
-                      <p className="text-sm text-gray-500 truncate">
+                      <p className="text-sm text-muted-foreground truncate">
                         {collection.description}
                       </p>
                     )}
-                    <p className="text-xs text-gray-400 mt-1">
-                      {collection.skills.length} skill{collection.skills.length !== 1 ? 's' : ''}
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {collection.skills.length} {t('collections.skills')}
                     </p>
                   </div>
                 </div>
@@ -199,59 +250,83 @@ export default function Collections() {
                     handleInstallCollection(collection)
                   }}
                   disabled={installingId === collection.id || collection.skills.length === 0}
-                  className="flex items-center gap-2 px-3 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 disabled:opacity-50 ml-4"
+                  className="flex items-center gap-2 px-3 py-2 bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 disabled:opacity-50 transition-colors ml-4"
                 >
                   {installingId === collection.id ? (
                     <Loader2 size={16} className="animate-spin" />
                   ) : (
                     <Download size={16} />
                   )}
-                  Install All
+                  {t('collections.installAll')}
                 </button>
               </div>
 
               {/* Collection Skills */}
               {expandedCollections.has(collection.id) && collection.skills.length > 0 && (
-                <div className="border-t border-gray-100 divide-y divide-gray-100">
+                <div className="border-t-2 border-border-light divide-y divide-border-light">
                   {collection.skills.map((skill) => (
-                    <div key={skill.id} className="p-4 pl-12 hover:bg-gray-50">
-                      <div className="flex items-start justify-between">
+                    <div key={skill.id} className="p-4 pl-12 hover:bg-secondary/30 transition-colors">
+                      <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-gray-900 truncate">
+                          <h4 className="font-semibold text-foreground">
                             {skill.name}
                           </h4>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             by {skill.author}
                           </p>
-                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                             {skill.description}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2 ml-4">
-                          <a
-                            href={`${SKILLHUB_URL}/skills/${skill.slug}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
-                            title="View on SkillHub"
-                            onClick={(e) => e.stopPropagation()}
+                        <div className="flex items-center gap-1">
+                          {/* Copy Link */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleCopyLink(skill)
+                            }}
+                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                            title={t('collections.copyLink')}
+                          >
+                            <Link2 size={16} />
+                          </button>
+                          {/* Export */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleExportSkill(skill)
+                            }}
+                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                            title={t('collections.export')}
+                          >
+                            <FileDown size={16} />
+                          </button>
+                          {/* View on SkillHub */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openInBrowser(`${SKILLHUB_URL}/skills/${skill.slug}`)
+                            }}
+                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                            title={t('collections.viewOnSkillHub')}
                           >
                             <ExternalLink size={16} />
-                          </a>
+                          </button>
+                          {/* Install */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
                               handleInstallSkill(skill)
                             }}
                             disabled={installingId === skill.id}
-                            className="flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                            className="flex items-center gap-1 px-2 py-1 bg-secondary text-foreground text-sm font-semibold hover:bg-secondary/80 disabled:opacity-50 transition-colors"
                           >
                             {installingId === skill.id ? (
                               <Loader2 size={14} className="animate-spin" />
                             ) : (
                               <Download size={14} />
                             )}
-                            Install
+                            {t('collections.install')}
                           </button>
                         </div>
                       </div>

@@ -24,7 +24,7 @@ const QUICK_ACTIONS = [
 export default function SearchDialog({ open, onClose }: SearchDialogProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { isAuthenticated, setSearchQuery } = useAppStore()
+  const { isAuthenticated, setSearchQuery, showToast } = useAppStore()
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SkillHubSkill[]>([])
@@ -59,6 +59,7 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
         setSelectedIndex(0)
       } catch (error) {
         console.error('Search failed:', error)
+        showToast('Search failed. Please try again.', 'error')
       } finally {
         setLoading(false)
       }

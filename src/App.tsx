@@ -22,7 +22,7 @@ const navItems = [
   { path: '/create', icon: PlusCircle, label: 'Create' },
   { path: '/favorites', icon: Heart, label: 'Favorites', authRequired: true },
   { path: '/collections', icon: Folder, label: 'Collections', authRequired: true },
-  { path: '/installed', icon: Package, label: 'Installed' },
+  { path: '/installed', icon: Package, label: 'Skills Manager' },
   { path: '/sync', icon: RefreshCw, label: 'Sync' },
   { path: '/settings', icon: Settings, label: 'Settings' },
 ]

@@ -27,7 +27,7 @@ export default function AIEnhanceToolbar({
   context,
 }: AIEnhanceToolbarProps) {
   const { t } = useTranslation()
-  const { isAuthenticated, accessToken, setToastMessage } = useAppStore()
+  const { isAuthenticated, accessToken, showToast } = useAppStore()
 
   const [state, setState] = useState<EnhanceState>('idle')
   const [enhancedText, setEnhancedText] = useState('')
@@ -37,7 +37,7 @@ export default function AIEnhanceToolbar({
 
   const handleEnhance = async (type: EnhanceType) => {
     if (!isAuthenticated || !accessToken) {
-      setToastMessage(t('common.loginRequired'))
+      showToast(t('common.loginRequired'), 'warning')
       return
     }
 

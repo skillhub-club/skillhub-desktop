@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Heart, ExternalLink, Download, Loader2 } from 'lucide-react'
+import { Heart, ExternalLink, Download, Loader2, Link2, FileDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { save } from '@tauri-apps/plugin-dialog'
+import { writeTextFile } from '@tauri-apps/plugin-fs'
 import { useAppStore } from '../store'
 import { fetchFavorites as apiFetchFavorites, SKILLHUB_URL } from '../api/auth'
+import { smartInstallSkill } from '../api/skillhub'
 import SkillDetail from '../components/SkillDetail'
 import type { FavoriteSkill, SkillHubSkill } from '../types'
 
 export default function Favorites() {
-  const { isAuthenticated, favorites, setFavorites, tools, setToastMessage, logout } = useAppStore()
+  const { t } = useTranslation()
+  const { isAuthenticated, favorites, setFavorites, tools, showToast, logout } = useAppStore()
   const [isLoading, setIsLoading] = useState(false)
   const [installingId, setInstallingId] = useState<string | null>(null)
   const [viewingSkill, setViewingSkill] = useState<SkillHubSkill | null>(null)
@@ -25,53 +30,102 @@ export default function Favorites() {
     } catch (error) {
       console.error('Failed to fetch favorites:', error)
       if ((error as Error).message === 'Not authenticated' || (error as Error).message === 'Authentication failed') {
-        setToastMessage('Session expired. Please sign in again.')
+        showToast(t('favorites.sessionExpired'), 'warning')
         logout()
       } else {
-        setToastMessage('Failed to load favorites')
+        showToast(t('favorites.failedToLoad'), 'error')
       }
     } finally {
       setIsLoading(false)
     }
   }
 
+  // Extract clean skill name from slug
+  const getSkillFolderName = (slug: string, skillName: string): string => {
+    const safeName = skillName
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim()
+    return safeName || slug.split('-').slice(-1)[0] || 'skill'
+  }
+
   const handleInstall = async (favorite: FavoriteSkill) => {
     const installedTools = tools.filter(t => t.installed)
     if (installedTools.length === 0) {
-      setToastMessage('No AI tools detected. Please install one first.')
+      showToast(t('favorites.noToolsDetected'), 'warning')
       return
     }
 
     setInstallingId(favorite.skill_id)
     try {
-      // Install to all detected tools
-      const { invoke } = await import('@tauri-apps/api/core')
-
-      for (const tool of installedTools) {
-        await invoke('install_skill', {
-          toolId: tool.id,
-          skillName: favorite.skill.slug,
-          skillContent: favorite.skill.skill_md_raw || `# ${favorite.skill.name}\n\n${favorite.skill.description}`,
-        })
-      }
-
-      setToastMessage(`Installed "${favorite.skill.name}" to ${installedTools.length} tool(s)`)
+      const toolIds = installedTools.map(t => t.id)
+      await smartInstallSkill(favorite.skill, toolIds)
+      showToast(t('favorites.installed', { name: favorite.skill.name, count: installedTools.length }), 'success')
     } catch (error) {
       console.error('Install failed:', error)
-      setToastMessage('Failed to install skill')
+      if ((error as Error).message === 'No skill content available') {
+        showToast(t('favorites.noSkillContent'), 'warning')
+      } else {
+        showToast(t('favorites.installFailed'), 'error')
+      }
     } finally {
       setInstallingId(null)
     }
   }
 
+  const handleCopyLink = async (skill: SkillHubSkill) => {
+    const url = `${SKILLHUB_URL}/skills/${skill.slug}`
+    try {
+      await navigator.clipboard.writeText(url)
+      showToast(t('favorites.linkCopied'), 'success')
+    } catch (error) {
+      console.error('Failed to copy:', error)
+      showToast(t('favorites.copyFailed'), 'error')
+    }
+  }
+
+  const handleExport = async (skill: SkillHubSkill) => {
+    try {
+      const content = skill.skill_md_raw || `---
+name: "${skill.name}"
+description: "${skill.description}"
+author: "${skill.author}"
+---
+
+# ${skill.name}
+
+${skill.description}
+`
+      const skillFolderName = getSkillFolderName(skill.slug, skill.name)
+      const filePath = await save({
+        defaultPath: `${skillFolderName}-SKILL.md`,
+        filters: [{ name: 'Markdown', extensions: ['md'] }],
+      })
+
+      if (filePath) {
+        await writeTextFile(filePath, content)
+        showToast(t('favorites.exported', { name: skill.name }), 'success')
+      }
+    } catch (error) {
+      console.error('Export failed:', error)
+      showToast(t('favorites.exportFailed'), 'error')
+    }
+  }
+
+  const openInBrowser = (url: string) => {
+    window.open(url, '_blank')
+  }
+
   if (!isAuthenticated) {
     return (
-      <div className="p-6">
+      <div className="p-6 max-w-5xl">
         <div className="text-center py-16">
-          <Heart size={48} className="mx-auto text-gray-300 mb-4" />
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">Sign in to view favorites</h2>
-          <p className="text-gray-500">
-            Sign in with your SkillHub account to sync and manage your favorite skills.
+          <Heart size={48} className="mx-auto text-muted-foreground mb-4" />
+          <h2 className="text-xl font-bold text-foreground mb-2">{t('favorites.signInTitle')}</h2>
+          <p className="text-muted-foreground">
+            {t('favorites.signInDesc')}
           </p>
         </div>
       </div>
@@ -79,59 +133,56 @@ export default function Favorites() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-5xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Favorites</h1>
-          <p className="text-gray-500 mt-1">Skills you've saved on SkillHub</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2 tracking-tight">{t('favorites.title').toUpperCase()}</h1>
+          <p className="text-muted-foreground">{t('favorites.subtitle')}</p>
         </div>
         <button
           onClick={loadFavorites}
           disabled={isLoading}
-          className="px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-semibold bg-secondary text-foreground hover:bg-secondary/80 disabled:opacity-50 transition-colors"
         >
-          {isLoading ? 'Syncing...' : 'Sync'}
+          {isLoading ? t('favorites.syncing') : t('favorites.sync')}
         </button>
       </div>
 
       {isLoading && favorites.length === 0 ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="animate-spin text-gray-400" size={32} />
+          <Loader2 className="animate-spin text-foreground" size={32} />
         </div>
       ) : favorites.length === 0 ? (
         <div className="text-center py-16">
-          <Heart size={48} className="mx-auto text-gray-300 mb-4" />
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">No favorites yet</h2>
-          <p className="text-gray-500">
-            Visit{' '}
-            <a
-              href={`${SKILLHUB_URL}/skills`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary-600 hover:underline"
+          <Heart size={48} className="mx-auto text-muted-foreground mb-4" />
+          <h2 className="text-xl font-bold text-foreground mb-2">{t('favorites.noFavorites')}</h2>
+          <p className="text-muted-foreground">
+            {t('favorites.visitSkillHub')}{' '}
+            <button
+              onClick={() => openInBrowser(`${SKILLHUB_URL}/skills`)}
+              className="text-foreground underline underline-offset-4 hover:decoration-2"
             >
               SkillHub
-            </a>{' '}
-            to discover and save skills.
+            </button>
           </p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="space-y-3">
           {favorites.map((favorite) => (
             <div
               key={favorite.id}
-              className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+              className="card p-4 hover:bg-secondary/30 transition-colors cursor-pointer"
               onClick={() => setViewingSkill(favorite.skill)}
             >
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 truncate">
+                  <h3 className="font-bold text-foreground">
                     {favorite.skill.name}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-muted-foreground mt-0.5">
                     by {favorite.skill.author}
                   </p>
-                  <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                  <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
                     {favorite.skill.description}
                   </p>
                   {favorite.skill.tags && favorite.skill.tags.length > 0 && (
@@ -139,7 +190,7 @@ export default function Favorites() {
                       {favorite.skill.tags.slice(0, 3).map((tag) => (
                         <span
                           key={tag}
-                          className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full"
+                          className="px-2 py-0.5 bg-secondary text-foreground text-xs font-semibold"
                         >
                           {tag}
                         </span>
@@ -147,31 +198,55 @@ export default function Favorites() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2 ml-4">
-                  <a
-                    href={`${SKILLHUB_URL}/skills/${favorite.skill.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
-                    title="View on SkillHub"
+                <div className="flex items-center gap-1">
+                  {/* Copy Link */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleCopyLink(favorite.skill)
+                    }}
+                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                    title={t('favorites.copyLink')}
+                  >
+                    <Link2 size={18} />
+                  </button>
+                  {/* Export */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleExport(favorite.skill)
+                    }}
+                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                    title={t('favorites.export')}
+                  >
+                    <FileDown size={18} />
+                  </button>
+                  {/* View on SkillHub */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      openInBrowser(`${SKILLHUB_URL}/skills/${favorite.skill.slug}`)
+                    }}
+                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                    title={t('favorites.viewOnSkillHub')}
                   >
                     <ExternalLink size={18} />
-                  </a>
+                  </button>
+                  {/* Install */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
                       handleInstall(favorite)
                     }}
                     disabled={installingId === favorite.skill_id}
-                    className="flex items-center gap-2 px-3 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                    className="flex items-center gap-2 px-3 py-2 bg-foreground text-background text-sm font-semibold hover:bg-foreground/90 disabled:opacity-50 transition-colors ml-1"
                   >
                     {installingId === favorite.skill_id ? (
                       <Loader2 size={16} className="animate-spin" />
                     ) : (
                       <Download size={16} />
                     )}
-                    Install
+                    {t('favorites.install')}
                   </button>
                 </div>
               </div>

@@ -48,7 +48,7 @@ category: "{category}"
 `
 
 export default function CreateSkill() {
-  const { selectedToolIds, setToastMessage, setTools, user, isAuthenticated, accessToken } = useAppStore()
+  const { selectedToolIds, showToast, setTools, user, isAuthenticated, accessToken } = useAppStore()
   const { t } = useTranslation()
 
   const [name, setName] = useState('')
@@ -191,11 +191,11 @@ export default function CreateSkill() {
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      setToastMessage('Please enter a skill name')
+      showToast('Please enter a skill name', 'warning')
       return
     }
     if (selectedToolIds.length === 0) {
-      setToastMessage('Please select at least one tool')
+      showToast('Please select at least one tool', 'warning')
       return
     }
 
@@ -204,7 +204,7 @@ export default function CreateSkill() {
     setCreating(true)
     try {
       await installSkill(skillContent, name, selectedToolIds)
-      setToastMessage(`Created "${name}" in ${selectedToolIds.length} tool(s)`)
+      showToast(`Created "${name}" in ${selectedToolIds.length} tool(s)`, 'success')
 
       // Track AI generation usage if applicable
       if (generationIdRef.current && accessToken && originalContentRef.current) {
@@ -244,7 +244,7 @@ export default function CreateSkill() {
       originalContentRef.current = null
     } catch (error) {
       console.error('Create failed:', error)
-      setToastMessage('Failed to create skill. Please try again.')
+      showToast('Failed to create skill. Please try again.', 'error')
     } finally {
       setCreating(false)
     }

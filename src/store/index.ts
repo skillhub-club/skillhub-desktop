@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { DetectedTool, InstalledSkill, SkillHubSkill, User, FavoriteSkill, SkillCollection } from '../types'
+import type { ToastType } from '../components/Toast'
+
+export interface ToastData {
+  message: string
+  type: ToastType
+}
 
 export interface TokenData {
   accessToken: string
@@ -26,9 +32,13 @@ interface AppState {
   // Tools
   tools: DetectedTool[]
   selectedToolIds: string[]
+  installTarget: 'personal' | 'project'
+  projectPath: string | null
   setTools: (tools: DetectedTool[]) => void
   toggleToolSelection: (toolId: string) => void
   selectAllTools: () => void
+  setInstallTarget: (target: 'personal' | 'project') => void
+  setProjectPath: (path: string | null) => void
 
   // Installed skills
   installedSkills: Record<string, InstalledSkill[]>
@@ -45,10 +55,16 @@ interface AppState {
   setCatalogSkills: (skills: SkillHubSkill[]) => void
   currentCategory: string
   setCurrentCategory: (category: string) => void
+  currentSortBy: string
+  setCurrentSortBy: (sortBy: string) => void
 
   // UI state
   isLoading: boolean
   setIsLoading: (loading: boolean) => void
+  toast: ToastData | null
+  showToast: (message: string, type?: ToastType) => void
+  hideToast: () => void
+  // Legacy support (will be removed)
   toastMessage: string | null
   setToastMessage: (message: string | null) => void
 }
@@ -87,6 +103,8 @@ export const useAppStore = create<AppState>()(
       // Tools
       tools: [],
       selectedToolIds: [],
+      installTarget: 'personal',
+      projectPath: null,
       setTools: (tools) => set({ tools }),
       toggleToolSelection: (toolId) => set((state) => ({
         selectedToolIds: state.selectedToolIds.includes(toolId)
@@ -96,6 +114,8 @@ export const useAppStore = create<AppState>()(
       selectAllTools: () => set((state) => ({
         selectedToolIds: state.tools.filter(t => t.installed).map(t => t.id)
       })),
+      setInstallTarget: (target) => set({ installTarget: target }),
+      setProjectPath: (path) => set({ projectPath: path }),
 
       // Installed skills
       installedSkills: {},
@@ -114,10 +134,16 @@ export const useAppStore = create<AppState>()(
       setCatalogSkills: (skills) => set({ catalogSkills: skills }),
       currentCategory: 'all',
       setCurrentCategory: (category) => set({ currentCategory: category }),
+      currentSortBy: 'popular',
+      setCurrentSortBy: (sortBy) => set({ currentSortBy: sortBy }),
 
       // UI state
       isLoading: false,
       setIsLoading: (loading) => set({ isLoading: loading }),
+      toast: null,
+      showToast: (message, type = 'success') => set({ toast: { message, type } }),
+      hideToast: () => set({ toast: null }),
+      // Legacy support (will be removed)
       toastMessage: null,
       setToastMessage: (message) => set({ toastMessage: message }),
     }),
@@ -135,6 +161,9 @@ export const useAppStore = create<AppState>()(
         // Preferences (persisted)
         selectedToolIds: state.selectedToolIds,
         currentCategory: state.currentCategory,
+        currentSortBy: state.currentSortBy,
+        installTarget: state.installTarget,
+        projectPath: state.projectPath,
       }),
     }
   )
