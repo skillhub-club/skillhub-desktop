@@ -38,9 +38,9 @@ const TOOL_CONFIG_FOLDERS: Record<string, string> = {
   cursor: '.cursor',
   cline: '.cline',
   gemini: '.gemini',
-  opencode: '.config/opencode',
+  opencode: '.opencode',
   kilocode: '.kilocode',
-  copilot: '.config/github-copilot',
+  copilot: '.copilot',
   windsurf: '.windsurf',
 }
 

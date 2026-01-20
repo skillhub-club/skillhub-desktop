@@ -176,6 +176,87 @@ async fn get_catalog(
     Ok(data)
 }
 
+// Get KOL detail with skills from SkillHub API
+#[tauri::command]
+async fn get_kol_detail(
+    username: String,
+    include_skills: Option<bool>,
+    skills_limit: Option<i32>,
+) -> Result<serde_json::Value, String> {
+    let client = reqwest::Client::new();
+    let base_url = get_api_base_url();
+
+    let url = format!(
+        "{}/api/kol/{}?include_skills={}&skills_limit={}",
+        base_url,
+        username,
+        include_skills.unwrap_or(true),
+        skills_limit.unwrap_or(20)
+    );
+
+    println!("[get_kol_detail] Fetching: {}", url);
+
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to get KOL detail: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("Failed to get KOL detail: HTTP {}", response.status()));
+    }
+
+    let data: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+
+    Ok(data)
+}
+
+// Get KOL list from SkillHub API
+#[tauri::command]
+async fn get_kol_list(
+    limit: Option<i32>,
+    offset: Option<i32>,
+    sort: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let client = reqwest::Client::new();
+    let base_url = get_api_base_url();
+
+    let url = format!(
+        "{}/api/kol?limit={}&offset={}&sort={}",
+        base_url,
+        limit.unwrap_or(20),
+        offset.unwrap_or(0),
+        sort.unwrap_or_else(|| "followers".to_string())
+    );
+
+    println!("[get_kol_list] Fetching: {}", url);
+
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| {
+            println!("[get_kol_list] Request failed: {}", e);
+            format!("Failed to get KOL list: {}", e)
+        })?;
+
+    println!("[get_kol_list] Response status: {}", response.status());
+
+    let data: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| {
+            println!("[get_kol_list] Parse failed: {}", e);
+            format!("Failed to parse response: {}", e)
+        })?;
+
+    println!("[get_kol_list] Success, got data");
+    Ok(data)
+}
+
 // Get skill detail from SkillHub API (using public desktop endpoint)
 #[tauri::command]
 async fn get_skill_detail(slug: String) -> Result<serde_json::Value, String> {
@@ -315,6 +396,8 @@ pub fn run() {
             read_skill_content,
             search_skills,
             get_catalog,
+            get_kol_list,
+            get_kol_detail,
             get_skill_detail,
             get_skill_files,
             get_remote_file_content,

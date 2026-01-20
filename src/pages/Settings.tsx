@@ -1,15 +1,23 @@
 import { useState } from 'react'
-import { ExternalLink, Globe } from 'lucide-react'
+import { ExternalLink, Globe, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { setLanguage, getLanguage } from '../i18n'
+import { clearCache } from '../api/skillhub'
+import { useAppStore } from '../store'
 
 export default function Settings() {
   const { t } = useTranslation()
   const [currentLang, setCurrentLang] = useState(getLanguage())
+  const { showToast } = useAppStore()
 
   const handleLanguageChange = (lang: string) => {
     setLanguage(lang)
     setCurrentLang(lang)
+  }
+
+  const handleClearCache = () => {
+    clearCache()
+    showToast('Cache cleared', 'success')
   }
 
   return (
@@ -48,6 +56,28 @@ export default function Settings() {
               }`}
             >
               {t('settings.chinese')}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Cache */}
+      <section className="mb-8">
+        <h2 className="swiss-label mb-4">CACHE</h2>
+        <div className="card p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Trash2 size={20} className="text-muted-foreground" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Clear API Cache</p>
+                <p className="text-xs text-muted-foreground">Clear cached KOL and catalog data to fetch fresh content</p>
+              </div>
+            </div>
+            <button
+              onClick={handleClearCache}
+              className="btn btn-secondary text-sm"
+            >
+              Clear Cache
             </button>
           </div>
         </div>
