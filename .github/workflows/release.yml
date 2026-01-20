@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  release:
+  build:
     permissions:
       contents: write
     strategy:
@@ -16,18 +16,41 @@ jobs:
         include:
           - platform: 'macos-latest'
             args: '--target aarch64-apple-darwin'
-            name: 'macOS-arm64'
+            target: 'aarch64-apple-darwin'
+            name: 'Mac-Apple-Silicon'
+            ext: 'dmg'
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
-            name: 'macOS-x64'
+            target: 'x86_64-apple-darwin'
+            name: 'Mac-Intel'
+            ext: 'dmg'
           - platform: 'windows-latest'
             args: ''
+            target: 'x86_64-pc-windows-msvc'
             name: 'Windows-x64'
+            ext: 'msi'
+          - platform: 'ubuntu-22.04'
+            args: ''
+            target: 'x86_64-unknown-linux-gnu'
+            name: 'Linux-x64'
+            ext: 'deb'
 
     runs-on: ${{ matrix.platform }}
+
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -48,24 +71,16 @@ jobs:
       - name: Sync version from git tag
         shell: bash
         run: |
-          # Extract version from tag (remove 'v' prefix)
           VERSION="${GITHUB_REF_NAME#v}"
           echo "Syncing version to $VERSION"
-
-          # Update package.json and tauri.conf.json using Node.js (cross-platform)
           node -e "
             const fs = require('fs');
-
-            // Update package.json
             const pkg = JSON.parse(fs.readFileSync('package.json'));
             pkg.version = '$VERSION';
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-
-            // Update tauri.conf.json
             const tauri = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json'));
             tauri.version = '$VERSION';
             fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(tauri, null, 2) + '\n');
-
             console.log('Version synced to $VERSION');
           "
 
@@ -73,37 +88,146 @@ jobs:
         run: npm ci
 
       - name: Build the app
+        id: build
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS Signing & Notarization secrets
-          # Uncomment these ONLY if you have configured the secrets in GitHub Settings
-          # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          # APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          # APPLE_ID: ${{ secrets.APPLE_ID }}
-          # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'SkillHub Desktop ${{ github.ref_name }}'
-          releaseBody: |
-            See the [CHANGELOG](https://github.com/skillhub-club/skillhub-desktop/blob/main/CHANGELOG.md) for details.
+          args: ${{ matrix.args }}
 
-            ## ⚠️ macOS Users / macOS 用户请注意
-            If you encounter the "App is damaged" error or cannot open the app, it is because the app is not notarized by Apple yet. Please run the following command in your Terminal to fix it:
-            
-            如果打开应用时提示“应用已损坏”或无法打开，这是因为应用尚未经过 Apple 签名公证。请在终端（Terminal）中运行以下命令来解决：
+      - name: Rename and upload artifacts (macOS)
+        if: matrix.platform == 'macos-latest'
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Find the DMG file
+          DMG_FILE=$(find src-tauri/target/${{ matrix.target }}/release/bundle/dmg -name "*.dmg" | head -1)
+          if [ -n "$DMG_FILE" ]; then
+            NEW_NAME="SkillHub-Desktop-${VERSION}-${{ matrix.name }}.dmg"
+            cp "$DMG_FILE" "$NEW_NAME"
+            echo "artifact_path=$NEW_NAME" >> $GITHUB_ENV
+            echo "Renamed: $DMG_FILE -> $NEW_NAME"
+          fi
+
+      - name: Rename and upload artifacts (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $VERSION = "${{ github.ref_name }}".TrimStart('v')
+          # Find MSI and NSIS files
+          $MSI = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" | Select-Object -First 1
+          $NSIS = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*.exe" | Select-Object -First 1
+
+          if ($MSI) {
+            $NewMSI = "SkillHub-Desktop-$VERSION-${{ matrix.name }}.msi"
+            Copy-Item $MSI.FullName -Destination $NewMSI
+            echo "msi_path=$NewMSI" >> $env:GITHUB_ENV
+            Write-Host "Renamed: $($MSI.Name) -> $NewMSI"
+          }
+          if ($NSIS) {
+            $NewNSIS = "SkillHub-Desktop-$VERSION-${{ matrix.name }}-Setup.exe"
+            Copy-Item $NSIS.FullName -Destination $NewNSIS
+            echo "nsis_path=$NewNSIS" >> $env:GITHUB_ENV
+            Write-Host "Renamed: $($NSIS.Name) -> $NewNSIS"
+          }
+
+      - name: Rename and upload artifacts (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Find DEB and AppImage files
+          DEB_FILE=$(find src-tauri/target/release/bundle/deb -name "*.deb" | head -1)
+          APPIMAGE_FILE=$(find src-tauri/target/release/bundle/appimage -name "*.AppImage" | head -1)
+
+          if [ -n "$DEB_FILE" ]; then
+            NEW_DEB="SkillHub-Desktop-${VERSION}-${{ matrix.name }}.deb"
+            cp "$DEB_FILE" "$NEW_DEB"
+            echo "deb_path=$NEW_DEB" >> $GITHUB_ENV
+            echo "Renamed: $DEB_FILE -> $NEW_DEB"
+          fi
+          if [ -n "$APPIMAGE_FILE" ]; then
+            NEW_APPIMAGE="SkillHub-Desktop-${VERSION}-${{ matrix.name }}.AppImage"
+            cp "$APPIMAGE_FILE" "$NEW_APPIMAGE"
+            echo "appimage_path=$NEW_APPIMAGE" >> $GITHUB_ENV
+            echo "Renamed: $APPIMAGE_FILE -> $NEW_APPIMAGE"
+          fi
+
+      - name: Upload macOS artifact
+        if: matrix.platform == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkillHub-Desktop-${{ matrix.name }}
+          path: "*.dmg"
+
+      - name: Upload Windows artifacts
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkillHub-Desktop-${{ matrix.name }}
+          path: |
+            *.msi
+            *.exe
+
+      - name: Upload Linux artifacts
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkillHub-Desktop-${{ matrix.name }}
+          path: |
+            *.deb
+            *.AppImage
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          find artifacts -type f -name "*"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: 'SkillHub Desktop ${{ github.ref_name }}'
+          body: |
+            ## Downloads 下载
+
+            | Platform 平台 | File 文件 | Description 说明 |
+            |--------------|----------|-----------------|
+            | 🍎 macOS (M1/M2/M3/M4) | `*-Mac-Apple-Silicon.dmg` | Apple Silicon 芯片 Mac |
+            | 🍎 macOS (Intel) | `*-Mac-Intel.dmg` | Intel 芯片 Mac |
+            | 🪟 Windows | `*-Windows-x64.msi` | Windows 安装包 |
+            | 🪟 Windows | `*-Windows-x64-Setup.exe` | Windows 安装程序 |
+            | 🐧 Linux | `*-Linux-x64.deb` | Debian/Ubuntu |
+            | 🐧 Linux | `*-Linux-x64.AppImage` | 通用 Linux |
+
+            ## ⚠️ macOS 用户请注意
+
+            If you encounter the "App is damaged" error, run this command in Terminal:
+
+            如果打开应用时提示"应用已损坏"，请在终端运行：
 
             ```bash
             xattr -cr /Applications/"SkillHub Desktop.app"
             ```
-            *(Make sure you have moved the app to the Applications folder / 确保您已经将应用拖入到了“应用程序”文件夹)*
 
-            ## Downloads
-            - **macOS (Apple Silicon)**: `.dmg` file for M1/M2/M3 Macs
-            - **macOS (Intel)**: `.dmg` file for Intel Macs
-            - **Windows**: `.msi` installer or `.exe` setup
-          releaseDraft: false
+            ---
+            See [CHANGELOG](https://github.com/skillhub-club/skillhub-desktop/blob/main/CHANGELOG.md) for details.
+          draft: false
           prerelease: false
-          args: ${{ matrix.args }}
+          files: |
+            artifacts/**/*.dmg
+            artifacts/**/*.msi
+            artifacts/**/*.exe
+            artifacts/**/*.deb
+            artifacts/**/*.AppImage
