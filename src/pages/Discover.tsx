@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Search, Loader2, ExternalLink, ChevronDown, ArrowUpDown, X } from 'lucide-react'
+import { Search, Loader2, ExternalLink, ChevronDown, ArrowUpDown, X, Users, Star } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
 import { useAppStore } from '../store'
-import { searchSkills, getCatalog, smartInstallSkill, detectTools } from '../api/skillhub'
+import { searchSkills, getCatalog, smartInstallSkill, detectTools, getKolList, type KolUser } from '../api/skillhub'
 import SkillCard from '../components/SkillCard'
 import SkillDetail from '../components/SkillDetail'
+import KolDetail from '../components/KolDetail'
 import ToolSelector from '../components/ToolSelector'
 import type { SkillHubSkill } from '../types'
 
@@ -14,6 +15,7 @@ const PAGE_SIZE = 12
 const CATEGORIES = [
   { id: 'all', label: 'All' },
   { id: 'collections', label: 'Collections' },
+  { id: 'kol', label: 'KOL' },
   { id: 'development', label: 'Development' },
   { id: 'devops', label: 'DevOps' },
   { id: 'testing', label: 'Testing' },
@@ -61,6 +63,11 @@ export default function Discover() {
   const [totalPages, setTotalPages] = useState(1)
   const [loadingMore, setLoadingMore] = useState(false)
 
+  // KOL state
+  const [kolList, setKolList] = useState<KolUser[]>([])
+  const [kolLoading, setKolLoading] = useState(false)
+  const [viewingKol, setViewingKol] = useState<KolUser | null>(null)
+
   // Get installed tools for quick install
   const installedTools = tools.filter(t => t.installed)
 
@@ -68,14 +75,30 @@ export default function Discover() {
   useEffect(() => {
     if (!searchQuery) {
       setCurrentPage(1)
+
+      // Special handling for KOL category
+      if (currentCategory === 'kol') {
+        setKolLoading(true)
+        getKolList(20, 0, 'followers')
+          .then(data => {
+            setKolList(data.kols || [])
+          })
+          .catch((error) => {
+            console.error('Failed to load KOL list:', error)
+            showToast('Failed to load KOL list', 'error')
+          })
+          .finally(() => setKolLoading(false))
+        return
+      }
+
       setIsLoading(true)
-      
-      // 如果选择了 collections 分类，传递 type=collections 参数获取聚合仓库
-      const categoryParam = currentCategory === 'all' || currentCategory === 'collections' 
-        ? undefined 
+
+      // 如果选择了 collections 分类，传递 type 参数
+      const categoryParam = currentCategory === 'all' || currentCategory === 'collections'
+        ? undefined
         : currentCategory
       const typeParam = currentCategory === 'collections' ? 'collections' : undefined
-      
+
       getCatalog(1, PAGE_SIZE, categoryParam, currentSortBy, typeParam)
         .then(data => {
           setCatalogSkills(data.skills || [])
@@ -268,65 +291,134 @@ export default function Discover() {
         </div>
       )}
 
-      {/* Skills Grid */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="animate-spin text-foreground" size={32} />
-        </div>
-      ) : displayedSkills.length === 0 ? (
-        <div className="text-center py-20 text-muted-foreground">
-          {searchQuery ? 'No skills found' : 'No skills available'}
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {displayedSkills.map(skill => (
-              <SkillCard
-                key={skill.id}
-                skill={skill}
-                onInstall={handleInstallClick}
-                onView={setViewingSkill}
-                installing={installing && selectedSkill?.id === skill.id}
-              />
-            ))}
+      {/* KOL Grid - Special rendering for KOL category */}
+      {currentCategory === 'kol' && !searchQuery ? (
+        kolLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="animate-spin text-foreground" size={32} />
           </div>
+        ) : kolList.length === 0 ? (
+          <div className="text-center py-20 text-muted-foreground">
+            No KOLs found
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {kolList.map(kol => (
+                <div
+                  key={kol.id}
+                  className="border-2 border-border-light hover:border-foreground transition-all p-4 cursor-pointer"
+                  onClick={() => setViewingKol(kol)}
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    {kol.avatarUrl ? (
+                      <img
+                        src={kol.avatarUrl}
+                        alt={kol.displayName}
+                        className="w-12 h-12 border-2 border-foreground"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 border-2 border-foreground flex items-center justify-center bg-secondary">
+                        <Users size={24} className="text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-foreground truncate">{kol.displayName}</h3>
+                      <p className="text-sm text-muted-foreground truncate">@{kol.githubUsername}</p>
+                    </div>
+                  </div>
+                  {kol.bio && (
+                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{kol.bio}</p>
+                  )}
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground uppercase tracking-wider">
+                    <span className="flex items-center gap-1">
+                      <Users size={12} />
+                      {kol.githubFollowers.toLocaleString()}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Star size={12} />
+                      {kol.skillCount} skills
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-          {/* Load More / View on Website */}
-          <div className="mt-8 text-center space-y-4">
-            {hasMore && (
+            <div className="mt-8 text-center">
               <button
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-                className="btn btn-primary disabled:opacity-50"
-              >
-                {loadingMore ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <ChevronDown size={18} />
-                )}
-                {loadingMore ? 'Loading...' : 'Load More'}
-              </button>
-            )}
-
-            <div>
-              <button
-                onClick={() => openWebsite(searchQuery ? `/skills?q=${encodeURIComponent(searchQuery)}` : '/skills')}
+                onClick={() => openWebsite('/kol')}
                 className="btn btn-secondary"
               >
                 <ExternalLink size={18} />
-                {searchQuery
-                  ? `View all results on SkillHub`
-                  : 'Browse all skills on SkillHub'
-                }
+                View all KOLs on SkillHub
               </button>
+              <p className="mt-4 text-sm text-muted-foreground uppercase tracking-wider">
+                Showing {kolList.length} KOLs
+              </p>
+            </div>
+          </>
+        )
+      ) : (
+        /* Skills Grid */
+        isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="animate-spin text-foreground" size={32} />
+          </div>
+        ) : displayedSkills.length === 0 ? (
+          <div className="text-center py-20 text-muted-foreground">
+            {searchQuery ? 'No skills found' : 'No skills available'}
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {displayedSkills.map(skill => (
+                <SkillCard
+                  key={skill.id}
+                  skill={skill}
+                  onInstall={handleInstallClick}
+                  onView={setViewingSkill}
+                  installing={installing && selectedSkill?.id === skill.id}
+                />
+              ))}
             </div>
 
-            <p className="text-sm text-muted-foreground uppercase tracking-wider">
-              Showing {displayedSkills.length} skills
-              {!searchQuery && totalPages > 1 && ` (page ${currentPage} of ${totalPages})`}
-            </p>
-          </div>
-        </>
+            {/* Load More / View on Website */}
+            <div className="mt-8 text-center space-y-4">
+              {hasMore && (
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="btn btn-primary disabled:opacity-50"
+                >
+                  {loadingMore ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <ChevronDown size={18} />
+                  )}
+                  {loadingMore ? 'Loading...' : 'Load More'}
+                </button>
+              )}
+
+              <div>
+                <button
+                  onClick={() => openWebsite(searchQuery ? `/skills?q=${encodeURIComponent(searchQuery)}` : '/skills')}
+                  className="btn btn-secondary"
+                >
+                  <ExternalLink size={18} />
+                  {searchQuery
+                    ? `View all results on SkillHub`
+                    : 'Browse all skills on SkillHub'
+                  }
+                </button>
+              </div>
+
+              <p className="text-sm text-muted-foreground uppercase tracking-wider">
+                Showing {displayedSkills.length} skills
+                {!searchQuery && totalPages > 1 && ` (page ${currentPage} of ${totalPages})`}
+              </p>
+            </div>
+          </>
+        )
       )}
 
       {/* Install Modal */}
@@ -385,6 +477,22 @@ export default function Discover() {
         <SkillDetail
           skill={viewingSkill}
           onClose={() => setViewingSkill(null)}
+        />
+      )}
+
+      {/* KOL Detail Modal */}
+      {viewingKol && (
+        <KolDetail
+          kol={viewingKol}
+          onClose={() => setViewingKol(null)}
+          onInstallSkill={(skill) => {
+            setViewingKol(null)
+            handleInstallClick(skill)
+          }}
+          onViewSkill={(skill) => {
+            setViewingKol(null)
+            setViewingSkill(skill)
+          }}
         />
       )}
     </div>

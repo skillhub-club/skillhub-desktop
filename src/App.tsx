@@ -1,5 +1,5 @@
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom'
-import { Search, Package, RefreshCw, Settings, Heart, Folder, PlusCircle, ExternalLink } from 'lucide-react'
+import { Search, Package, RefreshCw, Settings, Heart, Folder, PlusCircle, ExternalLink, Store } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,12 +13,14 @@ import SettingsPage from './pages/Settings'
 import Favorites from './pages/Favorites'
 import Collections from './pages/Collections'
 import CreateSkill from './pages/CreateSkill'
+import Marketplace from './pages/Marketplace'
 import Toast from './components/Toast'
 import UserMenu from './components/UserMenu'
 import SearchDialog from './components/SearchDialog'
 
 const navItems = [
   { path: '/', icon: Search, label: 'Discover' },
+  { path: '/marketplace', icon: Store, label: 'Marketplace' },
   { path: '/create', icon: PlusCircle, label: 'Create' },
   { path: '/favorites', icon: Heart, label: 'Favorites', authRequired: true },
   { path: '/collections', icon: Folder, label: 'Collections', authRequired: true },
@@ -28,7 +30,7 @@ const navItems = [
 ]
 
 function App() {
-  const { setTools, toastMessage, setToastMessage, isAuthenticated } = useAppStore()
+  const { setTools, toast, hideToast, toastMessage, setToastMessage, isAuthenticated } = useAppStore()
   const { t } = useTranslation()
   const navigate = useNavigate()
 
@@ -126,6 +128,7 @@ function App() {
       <main className="flex-1 overflow-auto bg-background">
         <Routes>
           <Route path="/" element={<Discover />} />
+          <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/create" element={<CreateSkill />} />
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/collections" element={<Collections />} />
@@ -136,6 +139,9 @@ function App() {
       </main>
 
       {/* Toast */}
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
+      )}
       {toastMessage && (
         <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
       )}

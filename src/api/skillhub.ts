@@ -12,6 +12,53 @@ function getApiBaseUrl(): string {
   return import.meta.env.VITE_SKILLHUB_API_URL || 'https://www.skillhub.club'
 }
 
+// ============ Cache System ============
+interface CacheEntry<T> {
+  data: T
+  timestamp: number
+}
+
+const cache = new Map<string, CacheEntry<unknown>>()
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+function getCached<T>(key: string): T | null {
+  const entry = cache.get(key)
+  if (!entry) return null
+
+  if (Date.now() - entry.timestamp > CACHE_TTL) {
+    cache.delete(key)
+    return null
+  }
+
+  return entry.data as T
+}
+
+function setCache<T>(key: string, data: T): void {
+  cache.set(key, { data, timestamp: Date.now() })
+}
+
+// Clear cache for a specific prefix or all
+export function clearCache(prefix?: string): void {
+  if (prefix) {
+    for (const key of cache.keys()) {
+      if (key.startsWith(prefix)) {
+        cache.delete(key)
+      }
+    }
+  } else {
+    cache.clear()
+  }
+  console.log('[Cache] Cleared:', prefix || 'all')
+}
+
+// Expose to window for debugging
+if (typeof window !== 'undefined') {
+  (window as unknown as { skillhubCache: { clear: typeof clearCache; list: () => string[] } }).skillhubCache = {
+    clear: clearCache,
+    list: () => Array.from(cache.keys()),
+  }
+}
+
 // Detect all supported AI coding tools on the system
 export async function detectTools(): Promise<DetectedTool[]> {
   return invoke('detect_tools')
@@ -58,6 +105,102 @@ export async function getCatalog(
   type?: string // "collections" for aggregator repos
 ): Promise<CatalogResponse> {
   return invoke('get_catalog', { page, limit, category, sortBy, type })
+}
+
+// KOL API response type
+export interface KolUser {
+  id: string
+  githubUsername: string
+  displayName: string
+  avatarUrl?: string
+  bio?: string | null
+  githubFollowers: number
+  skillCount: number
+  twitterHandle?: string | null
+  kolVerifiedAt?: string
+}
+
+export interface KolResponse {
+  kols: KolUser[]
+  pagination: {
+    total: number
+    limit: number
+    offset: number
+    hasMore: boolean
+  }
+}
+
+// Get KOL list with caching
+export async function getKolList(
+  limit = 20,
+  offset = 0,
+  sort: 'followers' | 'skills' | 'newest' = 'followers'
+): Promise<KolResponse> {
+  const cacheKey = `kol:${limit}:${offset}:${sort}`
+
+  // Check cache first
+  const cached = getCached<KolResponse>(cacheKey)
+  if (cached) {
+    console.log('[getKolList] Cache hit:', cacheKey)
+    return cached
+  }
+
+  console.log('[getKolList] Cache miss, calling invoke with:', { limit, offset, sort })
+  const data: KolResponse = await invoke('get_kol_list', { limit, offset, sort })
+  console.log('[getKolList] Received data:', data)
+
+  // Cache the result
+  setCache(cacheKey, data)
+
+  return data
+}
+
+// KOL detail response type
+export interface KolDetailResponse {
+  user: {
+    id: string
+    githubUsername: string
+    displayName: string
+    avatarUrl?: string
+    bio?: string | null
+    githubFollowers: number
+    isKol: boolean
+    stats: {
+      totalSkills: number
+      totalStars: number
+    }
+  }
+  skills: SkillHubSkill[]
+  pagination: {
+    total: number
+    limit: number
+    hasMore: boolean
+  }
+}
+
+// Get KOL detail with skills
+export async function getKolDetail(
+  username: string,
+  includeSkills = true,
+  skillsLimit = 20
+): Promise<KolDetailResponse> {
+  const cacheKey = `kol-detail:${username}:${includeSkills}:${skillsLimit}`
+
+  const cached = getCached<KolDetailResponse>(cacheKey)
+  if (cached) {
+    console.log('[getKolDetail] Cache hit:', cacheKey)
+    return cached
+  }
+
+  console.log('[getKolDetail] Fetching:', username)
+  const data: KolDetailResponse = await invoke('get_kol_detail', {
+    username,
+    include_skills: includeSkills,
+    skills_limit: skillsLimit
+  })
+
+  setCache(cacheKey, data)
+  return data
 }
 
 // Get skill detail from SkillHub API

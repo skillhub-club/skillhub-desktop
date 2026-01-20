@@ -3,13 +3,24 @@ use std::path::PathBuf;
 use tokio::fs;
 
 // Tool configurations based on OFFICIAL documentation:
-// - Claude Code: https://docs.anthropic.com/en/docs/claude-code/skills
-// - Codex: https://developers.openai.com/codex/skills
+// - Claude Code: https://code.claude.com/docs/en/skills
+//   Personal: ~/.claude/skills/, Project: .claude/skills/
+// - Codex (OpenAI): https://developers.openai.com/codex/skills/
+//   User: ~/.codex/skills/, Repo: .codex/skills/, Admin: /etc/codex/skills/
 // - Cline: https://docs.cline.bot/features/skills
-// - Cursor: cursor docs
-// - OpenCode: opencode.ai/docs/skills
-// - Gemini CLI: geminicli.com/docs/cli/skills
-// - Kilo Code: kilocode docs
+//   Global: ~/.cline/skills/, Project: .cline/skills/
+// - Cursor: https://cursor.com/docs/context/rules (v2.3.35+ uses .cursor/skills/)
+//   Project: .cursor/skills/ or .cursor/rules/
+// - OpenCode: https://opencode.ai/docs/skills
+//   Global: ~/.config/opencode/skills/, Project: .opencode/skills/
+//   Also supports Claude-compatible: ~/.claude/skills/, .claude/skills/
+// - GitHub Copilot (VS Code):
+//   Personal: ~/.copilot/skills/ (recommended), ~/.claude/skills/ (legacy)
+//   Project: .github/skills/ (recommended), .claude/skills/ (legacy)
+// - Gemini CLI: Similar to Claude Code structure
+//   User: ~/.gemini/skills/, Workspace: .gemini/skills/
+// - Windsurf: https://docs.windsurf.com/windsurf/cascade/memories
+//   Project only: .windsurf/rules/ (no global ~/.windsurf path officially supported)
 
 struct ToolConfig {
     id: &'static str,
@@ -23,13 +34,13 @@ struct ToolConfig {
 
 const SUPPORTED_TOOLS: &[ToolConfig] = &[
     // Claude Code: ~/.claude/skills/
-    // Personal: ~/.claude/skills/, Project: .claude/skills/, Plugin: bundled
+    // Personal: ~/.claude/skills/, Project: .claude/skills/
     ToolConfig {
         id: "claude",
         name: "Claude Code",
         config_paths: &[".claude"],
         primary_subpath: "skills",
-        all_subpaths: &["skills", "commands"],
+        all_subpaths: &["skills"],
     },
     // Codex: ~/.codex/skills/
     // USER: ~/.codex/skills/, REPO: .codex/skills/, ADMIN: /etc/codex/skills/
@@ -38,25 +49,24 @@ const SUPPORTED_TOOLS: &[ToolConfig] = &[
         name: "Codex (OpenAI)",
         config_paths: &[".codex"],
         primary_subpath: "skills",
-        all_subpaths: &["skills", "prompts"],
+        all_subpaths: &["skills"],
     },
-    // Cursor: ~/.cursor/skills/
-    // Also supports .claude/skills/ for compatibility
+    // Cursor: ~/.cursor/skills/ (v2.3.35+)
     ToolConfig {
         id: "cursor",
         name: "Cursor",
         config_paths: &[".cursor"],
         primary_subpath: "skills",
-        all_subpaths: &["skills", "rules", "commands"],
+        all_subpaths: &["skills"],
     },
     // Cline: ~/.cline/skills/
-    // Global: ~/.cline/skills/, Project: .cline/skills/, also .claude/skills/ compatible
+    // Global: ~/.cline/skills/, Project: .cline/skills/
     ToolConfig {
         id: "cline",
         name: "Cline",
         config_paths: &[".cline"],
         primary_subpath: "skills",
-        all_subpaths: &["skills", "rules"],
+        all_subpaths: &["skills"],
     },
     // OpenCode: ~/.config/opencode/skills/
     // Also supports .claude/skills/ for compatibility
@@ -68,7 +78,7 @@ const SUPPORTED_TOOLS: &[ToolConfig] = &[
         all_subpaths: &["skills"],
     },
     // Gemini CLI: ~/.gemini/skills/
-    // Workspace: .gemini/skills/, User: ~/.gemini/skills/, Extension: bundled
+    // User: ~/.gemini/skills/, Workspace: .gemini/skills/
     ToolConfig {
         id: "gemini",
         name: "Gemini CLI",
@@ -85,86 +95,81 @@ const SUPPORTED_TOOLS: &[ToolConfig] = &[
         primary_subpath: "skills",
         all_subpaths: &["skills", "skills-code", "skills-architect"],
     },
-    // GitHub Copilot: IDE settings + .github/
+    // GitHub Copilot (VS Code): ~/.copilot/skills/ (recommended)
+    // Also supports ~/.claude/skills/ for legacy compatibility
+    // Project: .github/skills/ or .claude/skills/
     ToolConfig {
         id: "copilot",
         name: "GitHub Copilot",
-        config_paths: &[".config/github-copilot"],
-        primary_subpath: "instructions",
-        all_subpaths: &["instructions"],
+        config_paths: &[".copilot"],
+        primary_subpath: "skills",
+        all_subpaths: &["skills"],
     },
-    // Windsurf: ~/.windsurf/rules/
+    // Windsurf: ~/.windsurf/rules/ (uses rules, not skills)
     ToolConfig {
         id: "windsurf",
         name: "Windsurf",
         config_paths: &[".windsurf", ".codeium/windsurf"],
         primary_subpath: "rules",
-        all_subpaths: &["rules", "commands"],
+        all_subpaths: &["rules"],
     },
-    // RooCode
+    // RooCode: ~/.roo/skills/
     ToolConfig {
         id: "roocode",
         name: "RooCode",
         config_paths: &[".roo", ".roocode"],
         primary_subpath: "skills",
-        all_subpaths: &["skills", "rules", "commands"],
+        all_subpaths: &["skills"],
     },
-    // Aider
+    // Aider: No official skills support
     ToolConfig {
         id: "aider",
         name: "Aider",
         config_paths: &[".aider"],
-        primary_subpath: ".",
-        all_subpaths: &["commands"],
+        primary_subpath: "skills",
+        all_subpaths: &["skills"],
     },
-    // Augment
+    // Augment: ~/.augment/skills/
     ToolConfig {
         id: "augment",
         name: "Augment",
         config_paths: &[".augment"],
         primary_subpath: "skills",
-        all_subpaths: &["skills", "rules", "commands"],
+        all_subpaths: &["skills"],
     },
-    // Continue
-    ToolConfig {
-        id: "continue",
-        name: "Continue",
-        config_paths: &[".continue"],
-        primary_subpath: "rules",
-        all_subpaths: &["rules", "commands"],
-    },
-    // AWS Kiro
+    // Continue: uses rules (not skills)
+    // ToolConfig {
+    //     id: "continue",
+    //     name: "Continue",
+    //     config_paths: &[".continue"],
+    //     primary_subpath: "rules",
+    //     all_subpaths: &["rules"],
+    // },
+    // AWS Kiro: ~/.kiro/skills/
     ToolConfig {
         id: "kiro",
         name: "AWS Kiro",
         config_paths: &[".kiro"],
         primary_subpath: "skills",
-        all_subpaths: &["skills", "rules", "commands"],
+        all_subpaths: &["skills"],
     },
-    // Zencoder
+    // Zencoder: ~/.zencoder/skills/
     ToolConfig {
         id: "zencoder",
         name: "Zencoder",
         config_paths: &[".zencoder"],
         primary_subpath: "skills",
-        all_subpaths: &["skills", "rules", "commands"],
+        all_subpaths: &["skills"],
     },
-    // Zed
+    // Zed: uses rules (not skills)
     ToolConfig {
         id: "zed",
         name: "Zed",
         config_paths: &[".zed"],
         primary_subpath: "rules",
-        all_subpaths: &["rules", "commands"],
+        all_subpaths: &["rules"],
     },
-    // VS Code
-    ToolConfig {
-        id: "vscode",
-        name: "VS Code",
-        config_paths: &[".vscode"],
-        primary_subpath: "rules",
-        all_subpaths: &["rules", "commands"],
-    },
+    // Note: VS Code uses GitHub Copilot for skills, so no separate vscode entry needed
 ];
 
 fn get_home_dir() -> Option<PathBuf> {
@@ -871,137 +876,18 @@ pub async fn get_tool_directories(tool_id: &str) -> Result<ToolDirectories, Stri
         }
     }
     
+    // Simplified: Only show skills directory for each tool
+    // Use the primary_subpath to determine the correct directory name
+    let dir_name = tool.primary_subpath;
+    let (label, description) = match dir_name {
+        "skills" => ("Skills", "Agent skills with SKILL.md files"),
+        "rules" => ("Rules", "Rules with SKILL.md or *.md files"),
+        "instructions" => ("Instructions", "Custom instructions"),
+        _ => ("Skills", "Agent skills with SKILL.md files"),
+    };
+
     let directories = match tool_id {
-        // Claude Code: ~/.claude/
-        // Personal: ~/.claude/skills/, Project: .claude/skills/, Plugins: ~/.claude/plugins/
-        "claude" => vec![
-            make_dir_info(
-                "Skills",
-                "Agent skills with SKILL.md files",
-                config_path.join("skills"),
-                "package",
-                false,
-                "skills",
-            ).await,
-            make_dir_info(
-                "Commands",
-                "Custom slash commands (/command-name)",
-                config_path.join("commands"),
-                "terminal",
-                false,
-                "commands",
-            ).await,
-            make_dir_info(
-                "Plugins",
-                "Bundled skills from installed plugins",
-                config_path.join("plugins"),
-                "puzzle",
-                false,
-                "plugins",
-            ).await,
-            make_dir_info(
-                "Memory (CLAUDE.md)",
-                "Personal preferences applied to all projects",
-                config_path.join("CLAUDE.md"),
-                "brain",
-                true,
-                "memory",
-            ).await,
-        ],
-        // Codex: ~/.codex/
-        // USER: ~/.codex/skills/, ADMIN: /etc/codex/skills/, SYSTEM: bundled
-        "codex" => vec![
-            make_dir_info(
-                "Skills",
-                "Agent skills - use $skill-installer to add more",
-                config_path.join("skills"),
-                "package",
-                false,
-                "skills",
-            ).await,
-            make_dir_info(
-                "Prompts",
-                "Custom prompts and templates",
-                config_path.join("prompts"),
-                "message-square",
-                false,
-                "prompts",
-            ).await,
-        ],
-        // Cursor: ~/.cursor/
-        // Also supports .claude/skills/ for compatibility
-        "cursor" => vec![
-            make_dir_info(
-                "Skills",
-                "Agent skills with SKILL.md files",
-                config_path.join("skills"),
-                "package",
-                false,
-                "skills",
-            ).await,
-            make_dir_info(
-                "Rules",
-                "Project rules (*.md or *.mdc)",
-                config_path.join("rules"),
-                "clipboard-list",
-                false,
-                "rules",
-            ).await,
-            make_dir_info(
-                "Commands",
-                "Custom commands",
-                config_path.join("commands"),
-                "terminal",
-                false,
-                "commands",
-            ).await,
-        ],
-        // Cline: ~/.cline/
-        // Global: ~/.cline/skills/, also .claude/skills/ compatible
-        "cline" => vec![
-            make_dir_info(
-                "Skills",
-                "Agent skills with SKILL.md files",
-                config_path.join("skills"),
-                "package",
-                false,
-                "skills",
-            ).await,
-            make_dir_info(
-                "Rules",
-                "Global rules (*.md files)",
-                config_path.join("rules"),
-                "clipboard-list",
-                false,
-                "rules",
-            ).await,
-        ],
-        // OpenCode: ~/.config/opencode/
-        // Also supports .claude/skills/ for compatibility
-        "opencode" => vec![
-            make_dir_info(
-                "Skills",
-                "Agent skills with SKILL.md files",
-                config_path.join("skills"),
-                "package",
-                false,
-                "skills",
-            ).await,
-        ],
-        // Gemini CLI: ~/.gemini/
-        // Workspace: .gemini/skills/, User: ~/.gemini/skills/, Extension: bundled
-        "gemini" => vec![
-            make_dir_info(
-                "Skills",
-                "User skills available across all workspaces",
-                config_path.join("skills"),
-                "package",
-                false,
-                "skills",
-            ).await,
-        ],
-        // Kilo Code: ~/.kilocode/
-        // Has mode-specific directories: skills-code/, skills-architect/
+        // Kilo Code has mode-specific skill directories
         "kilocode" => vec![
             make_dir_info(
                 "Skills",
@@ -1028,45 +914,15 @@ pub async fn get_tool_directories(tool_id: &str) -> Result<ToolDirectories, Stri
                 "skills-architect",
             ).await,
         ],
-        // GitHub Copilot
-        "copilot" => vec![
-            make_dir_info(
-                "Instructions",
-                "Custom instructions for Copilot",
-                config_path.join("instructions"),
-                "file-text",
-                false,
-                "instructions",
-            ).await,
-        ],
-        // Windsurf: ~/.windsurf/
-        "windsurf" => vec![
-            make_dir_info(
-                "Rules",
-                "Workspace rules with activation modes",
-                config_path.join("rules"),
-                "clipboard-list",
-                false,
-                "rules",
-            ).await,
-            make_dir_info(
-                "Commands",
-                "Custom commands",
-                config_path.join("commands"),
-                "terminal",
-                false,
-                "commands",
-            ).await,
-        ],
-        // Default structure for other tools
+        // All other tools: just show the primary skills directory
         _ => vec![
             make_dir_info(
-                "Skills",
-                &format!("Skills for {}", tool.name),
-                config_path.join("skills"),
+                label,
+                description,
+                config_path.join(dir_name),
                 "package",
                 false,
-                "skills",
+                dir_name,
             ).await,
         ],
     };
