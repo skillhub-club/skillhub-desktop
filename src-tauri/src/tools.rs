@@ -943,3 +943,82 @@ pub async fn read_file_content(path: &str) -> Result<String, String> {
         .await
         .map_err(|e| format!("Failed to read file: {}", e))
 }
+
+/// Copy a skill from source to destination
+/// Handles both folder-based skills and single .md file skills
+pub async fn copy_skill(source_path: &str, dest_dir: &str) -> Result<String, String> {
+    let source = PathBuf::from(source_path);
+    let dest_base = PathBuf::from(dest_dir);
+
+    // Ensure destination directory exists
+    if !dest_base.exists() {
+        fs::create_dir_all(&dest_base)
+            .await
+            .map_err(|e| format!("Failed to create destination directory: {}", e))?;
+    }
+
+    let skill_name = source.file_name()
+        .ok_or("Invalid source path")?
+        .to_string_lossy()
+        .to_string();
+
+    let dest_path = dest_base.join(&skill_name);
+
+    // Check if destination already exists
+    if dest_path.exists() {
+        return Err(format!("Skill '{}' already exists in destination", skill_name));
+    }
+
+    if source.is_dir() {
+        // Copy entire directory recursively
+        copy_dir_recursive(&source, &dest_path).await?;
+    } else {
+        // Copy single file
+        fs::copy(&source, &dest_path)
+            .await
+            .map_err(|e| format!("Failed to copy file: {}", e))?;
+    }
+
+    Ok(dest_path.to_string_lossy().to_string())
+}
+
+/// Recursively copy a directory
+#[async_recursion::async_recursion]
+async fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> Result<(), String> {
+    fs::create_dir_all(dst)
+        .await
+        .map_err(|e| format!("Failed to create directory: {}", e))?;
+
+    let mut entries = fs::read_dir(src)
+        .await
+        .map_err(|e| format!("Failed to read directory: {}", e))?;
+
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let entry_path = entry.path();
+        let dest_path = dst.join(entry.file_name());
+
+        if entry_path.is_dir() {
+            copy_dir_recursive(&entry_path, &dest_path).await?;
+        } else {
+            fs::copy(&entry_path, &dest_path)
+                .await
+                .map_err(|e| format!("Failed to copy file: {}", e))?;
+        }
+    }
+
+    Ok(())
+}
+
+/// List skills in a directory (for import picker)
+pub async fn list_skills_in_dir(dir_path: &str) -> Result<Vec<InstalledSkill>, String> {
+    let path = PathBuf::from(dir_path);
+
+    if !path.exists() {
+        return Ok(vec![]);
+    }
+
+    let mut skills = Vec::new();
+    collect_skills_from_dir(&path, "temp", &mut skills).await;
+
+    Ok(skills)
+}

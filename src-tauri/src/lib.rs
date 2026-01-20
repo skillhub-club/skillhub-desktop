@@ -380,6 +380,18 @@ async fn get_tool_directories(tool_id: String) -> Result<tools::ToolDirectories,
     tools::get_tool_directories(&tool_id).await
 }
 
+// Copy a skill from source to destination directory
+#[tauri::command]
+async fn copy_skill(source_path: String, dest_dir: String) -> Result<String, String> {
+    tools::copy_skill(&source_path, &dest_dir).await
+}
+
+// List skills in a directory (for import picker)
+#[tauri::command]
+async fn list_skills_in_dir(dir_path: String) -> Result<Vec<InstalledSkill>, String> {
+    tools::list_skills_in_dir(&dir_path).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -407,6 +419,8 @@ pub fn run() {
             get_claude_directories,
             check_path_exists,
             get_tool_directories,
+            copy_skill,
+            list_skills_in_dir,
         ])
         .setup(|app| {
             // Create tray menu
