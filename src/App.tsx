@@ -120,7 +120,7 @@ function App() {
         </div>
 
         <div className="px-4 py-2 border-t border-border-light">
-          <p className="text-xs text-muted-foreground text-center uppercase tracking-widest">v0.1.0</p>
+          <p className="text-xs text-muted-foreground text-center uppercase tracking-widest">v0.1.6</p>
         </div>
       </aside>
 
