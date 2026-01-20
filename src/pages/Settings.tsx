@@ -93,7 +93,7 @@ export default function Settings() {
             </div>
             <div>
               <h3 className="font-bold text-foreground">SkillHub Desktop</h3>
-              <p className="text-sm text-muted-foreground uppercase tracking-wider">{t('settings.version')} 0.1.6</p>
+              <p className="text-sm text-muted-foreground uppercase tracking-wider">{t('settings.version')} {__APP_VERSION__}</p>
             </div>
           </div>
 
