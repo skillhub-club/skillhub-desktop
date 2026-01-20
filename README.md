@@ -4,7 +4,8 @@ A desktop application for managing AI coding skills across multiple tools. Brows
 
 <p align="center">
   <a href="https://www.skillhub.club">
-    <img src="https://www.skillhub.club/og-image.png" alt="SkillHub Desktop" width="600" />
+    https://www.skillstore.club/
+    <img src="https://www.skillstore.club/icon.svg" alt="SkillHub Desktop" width="600" />
   </a>
 </p>
 
@@ -13,7 +14,7 @@ A desktop application for managing AI coding skills across multiple tools. Brows
 </p>
 
 <p align="center">
-  <a href="https://www.skillhub.club">Website</a> •
+  <a href="https://www.skillstore.club/">Website</a> •
   <a href="https://www.skillhub.club/skills">Browse Skills</a> •
   <a href="https://www.skillhub.club/docs">Documentation</a>
 </p>
