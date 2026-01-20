@@ -3,7 +3,7 @@ import { X, Star, Download, ExternalLink, Github, Tag, FileText, Loader2, Folder
 import { open } from '@tauri-apps/plugin-shell'
 import { useTranslation } from 'react-i18next'
 import type { SkillHubSkill, SkillFileNode, SkillFilesResponse } from '../types'
-import { getSkillDetail, installSkill, getSkillFiles, getFileContent, buildRawGitHubUrl } from '../api/skillhub'
+import { getSkillDetail, installSkill, installSkillFiles, getSkillFiles, getFileContent, buildRawGitHubUrl, type GitHubFile } from '../api/skillhub'
 import { useAppStore } from '../store'
 import ToolSelector from './ToolSelector'
 import FilePreview from './FilePreview'
@@ -263,10 +263,10 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
       showToast('Please select at least one tool', 'warning')
       return
     }
-    
+
     // Check if we have files data and selected files
     const hasFilesSelected = checkedFiles.size > 0 && filesData
-    
+
     if (!hasFilesSelected && !skill.skill_md_raw) {
       showToast('No files selected for installation', 'warning')
       return
@@ -275,10 +275,10 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
     setInstalling(true)
     try {
       if (hasFilesSelected && filesData) {
-        // Install selected files
+        // Fetch all selected files content
         const filesToInstall = Array.from(checkedFiles)
-        let installedCount = 0
-        
+        const files: GitHubFile[] = []
+
         for (const filePath of filesToInstall) {
           try {
             const rawUrl = buildRawGitHubUrl(
@@ -288,25 +288,30 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
               filesData.skill_path
             )
             const content = await getFileContent(rawUrl)
-            
-            // Use filename (without extension) or full path for skill name
-            const fileName = filePath.split('/').pop() || filePath
-            const skillName = filesToInstall.length === 1 
-              ? skill.name 
-              : `${skill.name}/${fileName}`
-            
-            await installSkill(content, skillName, selectedToolIds)
-            installedCount++
+
+            // Normalize SKILL.md path
+            const normalizedPath = filePath.toLowerCase() === 'skill.md' ? 'SKILL.md' : filePath
+            files.push({ path: normalizedPath, content })
           } catch (error) {
-            console.error(`Failed to install ${filePath}:`, error)
+            console.error(`Failed to fetch ${filePath}:`, error)
           }
         }
-        
-        if (installedCount > 0) {
-          showToast(`Installed ${installedCount} file(s) to ${selectedToolIds.length} tool(s)`, 'success')
+
+        if (files.length > 0) {
+          // Create folder name from skill name
+          const folderName = skill.name
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .trim() || skill.slug.split('-').slice(-1)[0] || 'skill'
+
+          // Install all files together preserving structure
+          await installSkillFiles(files, folderName, selectedToolIds)
+          showToast(`Installed ${files.length} file(s) to ${selectedToolIds.length} tool(s)`, 'success')
           onClose()
         } else {
-          throw new Error('No files were installed')
+          throw new Error('No files were fetched')
         }
       } else {
         // Fallback: install skill_md_raw
