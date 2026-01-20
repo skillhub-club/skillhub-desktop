@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { 
+import {
   RefreshCw, ChevronRight, FolderOpen, Plus, Trash2,
-  BookOpen, MessageCircle, Terminal, Blocks, User, Briefcase
+  BookOpen, MessageCircle, Terminal, Blocks, User, Briefcase, Download
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { invoke } from '@tauri-apps/api/core'
@@ -10,6 +10,7 @@ import { useAppStore } from '../store'
 import { detectTools } from '../api/skillhub'
 import ToolIcon from '../components/ToolIcon'
 import SkillsExplorer from '../components/SkillsExplorer'
+import ImportSkillsModal from '../components/ImportSkillsModal'
 
 // Category types
 type CategoryType = 'skills' | 'prompts' | 'commands' | 'plugins'
@@ -80,6 +81,10 @@ export default function Installed() {
   const [explorerOpen, setExplorerOpen] = useState(false)
   const [explorerPath, setExplorerPath] = useState<string>('')
   const [explorerTitle, setExplorerTitle] = useState<string>('')
+
+  // Import modal state
+  const [importModalOpen, setImportModalOpen] = useState(false)
+  const [importCategory, setImportCategory] = useState<CategoryType>('skills')
 
   const installedTools = tools.filter(t => t.installed)
   const selectedToolData = tools.find(t => t.id === selectedTool)
@@ -259,6 +264,29 @@ export default function Installed() {
     }
   }
 
+  // Open import modal for a category
+  const openImportModal = (category: CategoryType) => {
+    setImportCategory(category)
+    setImportModalOpen(true)
+  }
+
+  // Get source path for import (personal skills)
+  const getPersonalCategoryPath = (category: CategoryType) => {
+    if (!selectedToolData) return ''
+    const catInfo = CATEGORIES.find(c => c.type === category)
+    if (!catInfo) return ''
+    return `${selectedToolData.config_path}/${catInfo.folder}`
+  }
+
+  // Get destination path for import (project skills)
+  const getProjectCategoryPath = (category: CategoryType) => {
+    if (!selectedProject) return ''
+    const configFolder = TOOL_CONFIG_FOLDERS[selectedTool] || `.${selectedTool}`
+    const catInfo = CATEGORIES.find(c => c.type === category)
+    if (!catInfo) return ''
+    return `${selectedProject.path}/${configFolder}/${catInfo.folder}`
+  }
+
   return (
     <div className="h-full flex">
       {/* Left: Tool List */}
@@ -431,21 +459,39 @@ export default function Installed() {
                             const count = selectedProject.counts[cat.type]
                             const configFolder = TOOL_CONFIG_FOLDERS[selectedTool] || `.${selectedTool}`
                             return (
-                              <button
+                              <div
                                 key={cat.type}
-                                onClick={() => openCategory(cat.type, `${selectedProject.path}/${configFolder}`, selectedProject.name)}
-                                className="card p-5 text-left hover:border-foreground transition-colors group"
+                                className="card p-5 hover:border-foreground transition-colors group"
                               >
                                 <div className="flex items-start justify-between mb-3">
                                   <div className="p-2 bg-secondary">
                                     <Icon size={24} />
                                   </div>
-                                  <ChevronRight size={20} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => openImportModal(cat.type)}
+                                      className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors opacity-0 group-hover:opacity-100"
+                                    >
+                                      <Download size={14} />
+                                      Import
+                                    </button>
+                                    <button
+                                      onClick={() => openCategory(cat.type, `${selectedProject.path}/${configFolder}`, selectedProject.name)}
+                                      className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                                    >
+                                      <ChevronRight size={18} />
+                                    </button>
+                                  </div>
                                 </div>
-                                <h3 className="font-bold text-lg mb-1">{cat.label}</h3>
-                                <p className="text-sm text-muted-foreground mb-2">{cat.description}</p>
-                                <div className="text-2xl font-bold">{count}</div>
-                              </button>
+                                <button
+                                  onClick={() => openCategory(cat.type, `${selectedProject.path}/${configFolder}`, selectedProject.name)}
+                                  className="text-left w-full"
+                                >
+                                  <h3 className="font-bold text-lg mb-1">{cat.label}</h3>
+                                  <p className="text-sm text-muted-foreground mb-2">{cat.description}</p>
+                                  <div className="text-2xl font-bold">{count}</div>
+                                </button>
+                              </div>
                             )
                           })}
                         </div>
@@ -556,6 +602,32 @@ export default function Installed() {
           }}
           directPath={explorerPath}
           title={explorerTitle}
+        />
+      )}
+
+      {/* Import Skills Modal */}
+      {importModalOpen && selectedToolData && selectedProject && (
+        <ImportSkillsModal
+          sourcePath={getPersonalCategoryPath(importCategory)}
+          destPath={getProjectCategoryPath(importCategory)}
+          toolName={selectedToolData.name}
+          onClose={() => setImportModalOpen(false)}
+          onImported={async () => {
+            showToast('Skills imported successfully', 'success')
+            // Refresh counts
+            if (selectedProject) {
+              const counts = await loadProjectCounts(selectedProject)
+              const updated = projects.map(p =>
+                p.path === selectedProject.path && p.toolId === selectedProject.toolId
+                  ? { ...p, counts }
+                  : p
+              )
+              setProjects(updated)
+              localStorage.setItem('skillhub_projects', JSON.stringify(updated))
+              setSelectedProject({ ...selectedProject, counts })
+            }
+            setImportModalOpen(false)
+          }}
         />
       )}
     </div>

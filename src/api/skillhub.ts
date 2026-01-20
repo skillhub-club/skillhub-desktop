@@ -93,7 +93,18 @@ export async function searchSkills(
   query: string,
   limit?: number
 ): Promise<SkillHubSkill[]> {
-  return invoke('search_skills', { query, limit })
+  const results: SkillHubSkill[] = await invoke('search_skills', { query, limit })
+
+  // Deduplicate by slug, keeping the one with highest github_stars
+  const uniqueBySlug = new Map<string, SkillHubSkill>()
+  for (const skill of results) {
+    const existing = uniqueBySlug.get(skill.slug)
+    if (!existing || (skill.github_stars || 0) > (existing.github_stars || 0)) {
+      uniqueBySlug.set(skill.slug, skill)
+    }
+  }
+
+  return Array.from(uniqueBySlug.values())
 }
 
 // Get skill catalog from SkillHub API

@@ -1,6 +1,6 @@
 {
   "name": "skillhub-desktop",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "description": "SkillHub Desktop - Manage AI coding skills across all your tools",
   "type": "module",
   "scripts": {
