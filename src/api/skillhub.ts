@@ -4,12 +4,39 @@ import type {
   InstalledSkill,
   SkillHubSkill,
   CatalogResponse,
-  SkillFilesResponse
+  SkillFilesResponse,
+  UserSkill,
+  UserSkillFile,
+  CreateUserSkillRequest,
+  UploadFilesRequest,
+  UploadUrlRequest,
+  UploadUrlResponse,
+  PublishSkillRequest,
+  SkillVersion,
+  SkillVisibility,
+  SkillStatus,
+  MarketplaceQuery,
+  MarketplaceResponse,
+  MarketplaceSkill
 } from '../types'
 
 // Get the API base URL
 function getApiBaseUrl(): string {
-  return import.meta.env.VITE_SKILLHUB_API_URL || 'https://www.skillhub.club'
+  const envUrl = import.meta.env.VITE_SKILLHUB_API_URL
+  const defaultUrl = 'https://www.skillhub.club'
+
+  // In web dev (vite preview), hitting a localhost API with another localhost origin will fail CORS.
+  // If we're not in a Tauri environment and the env is localhost but on a different origin, fall back to prod.
+  if (typeof window !== 'undefined') {
+    const isTauri = '__TAURI__' in window
+    const isLocalEnv = envUrl?.includes('localhost') || envUrl?.includes('127.0.0.1')
+    const sameOrigin = envUrl?.startsWith(window.location.origin)
+    if (!isTauri && isLocalEnv && !sameOrigin) {
+      return defaultUrl
+    }
+  }
+
+  return envUrl || defaultUrl
 }
 
 // ============ Cache System ============
@@ -593,5 +620,283 @@ export async function enhanceText(
         }
       }
     }
+  }
+}
+
+// ============ User Hosted Skills API ============
+
+// Create a new skill (draft)
+export async function createUserSkill(
+  accessToken: string,
+  request: CreateUserSkillRequest
+): Promise<UserSkill> {
+  const baseUrl = getApiBaseUrl()
+  const response = await fetch(`${baseUrl}/api/user/skills`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(request),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to create skill' }))
+    throw new Error(error.error || error.message || 'Failed to create skill')
+  }
+
+  return response.json()
+}
+
+// List user's skills
+export async function listUserSkills(
+  accessToken: string,
+  options?: { status?: SkillStatus; visibility?: SkillVisibility }
+): Promise<UserSkill[]> {
+  const baseUrl = getApiBaseUrl()
+  const params = new URLSearchParams()
+  if (options?.status) params.set('status', options.status)
+  if (options?.visibility) params.set('visibility', options.visibility)
+
+  const url = `${baseUrl}/api/user/skills${params.toString() ? '?' + params.toString() : ''}`
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to list skills' }))
+    throw new Error(error.error || error.message || 'Failed to list skills')
+  }
+
+  return response.json()
+}
+
+// Get skill detail
+export async function getUserSkillDetail(
+  accessToken: string,
+  skillId: string
+): Promise<UserSkill> {
+  const baseUrl = getApiBaseUrl()
+  const response = await fetch(`${baseUrl}/api/user/skills/${skillId}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to get skill' }))
+    throw new Error(error.error || error.message || 'Failed to get skill')
+  }
+
+  return response.json()
+}
+
+// Update skill metadata
+export async function updateUserSkill(
+  accessToken: string,
+  skillId: string,
+  updates: Partial<CreateUserSkillRequest>
+): Promise<UserSkill> {
+  const baseUrl = getApiBaseUrl()
+  const response = await fetch(`${baseUrl}/api/user/skills/${skillId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(updates),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to update skill' }))
+    throw new Error(error.error || error.message || 'Failed to update skill')
+  }
+
+  return response.json()
+}
+
+// Upload/update files and generate new version
+export async function uploadSkillFiles(
+  accessToken: string,
+  skillId: string,
+  request: UploadFilesRequest
+): Promise<{ version: number }> {
+  const baseUrl = getApiBaseUrl()
+  const response = await fetch(`${baseUrl}/api/user/skills/${skillId}/files`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(request),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to upload files' }))
+    throw new Error(error.error || error.message || 'Failed to upload files')
+  }
+
+  return response.json()
+}
+
+// Get upload URL for large files
+export async function getUploadUrl(
+  accessToken: string,
+  skillId: string,
+  request: UploadUrlRequest
+): Promise<UploadUrlResponse> {
+  const baseUrl = getApiBaseUrl()
+  const response = await fetch(`${baseUrl}/api/user/skills/${skillId}/upload-url`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(request),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to get upload URL' }))
+    throw new Error(error.error || error.message || 'Failed to get upload URL')
+  }
+
+  return response.json()
+}
+
+// Publish a version
+export async function publishSkill(
+  accessToken: string,
+  skillId: string,
+  request: PublishSkillRequest
+): Promise<UserSkill> {
+  const baseUrl = getApiBaseUrl()
+  const response = await fetch(`${baseUrl}/api/user/skills/${skillId}/publish`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(request),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to publish skill' }))
+    throw new Error(error.error || error.message || 'Failed to publish skill')
+  }
+
+  return response.json()
+}
+
+// Set visibility
+export async function setSkillVisibility(
+  accessToken: string,
+  skillId: string,
+  visibility: SkillVisibility
+): Promise<UserSkill> {
+  const baseUrl = getApiBaseUrl()
+  const response = await fetch(`${baseUrl}/api/user/skills/${skillId}/visibility`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ visibility }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to set visibility' }))
+    throw new Error(error.error || error.message || 'Failed to set visibility')
+  }
+
+  return response.json()
+}
+
+// Get version list
+export async function getSkillVersions(
+  accessToken: string,
+  skillId: string
+): Promise<SkillVersion[]> {
+  const baseUrl = getApiBaseUrl()
+  const response = await fetch(`${baseUrl}/api/user/skills/${skillId}/versions`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to get versions' }))
+    throw new Error(error.error || error.message || 'Failed to get versions')
+  }
+
+  return response.json()
+}
+
+// Get files for a specific version
+export async function getSkillFilesForVersion(
+  accessToken: string,
+  skillId: string,
+  version?: number
+): Promise<UserSkillFile[]> {
+  const baseUrl = getApiBaseUrl()
+  const params = version ? `?version=${version}` : ''
+  const response = await fetch(`${baseUrl}/api/user/skills/${skillId}/files${params}`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to get files' }))
+    throw new Error(error.error || error.message || 'Failed to get files')
+  }
+
+  return response.json()
+}
+
+// Get public marketplace skills (requires auth)
+export async function listMarketplaceSkills(
+  accessToken: string,
+  options?: MarketplaceQuery
+): Promise<MarketplaceResponse> {
+  const baseUrl = getApiBaseUrl()
+  const params = new URLSearchParams()
+  if (options?.page) params.set('page', options.page.toString())
+  if (options?.pageSize) params.set('page_size', options.pageSize.toString())
+  if (options?.q) params.set('q', options.q)
+  if (options?.category) params.set('category', options.category)
+  if (options?.tag) params.set('tag', options.tag)
+  if (options?.hasCover !== undefined) params.set('has_cover', String(options.hasCover))
+  if (options?.sort) params.set('sort', options.sort)
+
+  const query = params.toString()
+  const url = `${baseUrl}/api/user/skills/public${query ? `?${query}` : ''}`
+
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to load marketplace' }))
+    throw new Error(error.error || error.message || 'Failed to load marketplace')
+  }
+
+  const data: MarketplaceResponse = await response.json()
+
+  // Normalize cover / owner fields to camelCase for UI convenience
+  const skills = (data.skills || []).map((skill: MarketplaceSkill) => ({
+    ...skill,
+    coverUrl: (skill as unknown as { cover_url?: string }).cover_url || skill.coverUrl,
+    ownerName: (skill as unknown as { owner_name?: string }).owner_name || skill.ownerName,
+    ownerId: (skill as unknown as { owner_id?: string }).owner_id || skill.ownerId,
+    ownerAvatar: (skill as unknown as { owner_avatar?: string }).owner_avatar || skill.ownerAvatar,
+  }))
+
+  return {
+    ...data,
+    skills,
   }
 }

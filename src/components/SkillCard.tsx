@@ -8,6 +8,14 @@ interface SkillCardProps {
   onInstall: (skill: SkillHubSkill) => void
   onView?: (skill: SkillHubSkill) => void
   installing?: boolean
+  showPreviewButton?: boolean
+  customUrl?: string
+  meta?: {
+    coverUrl?: string
+    views?: number
+    downloads?: number
+    ownerName?: string
+  }
 }
 
 function getRatingBadge(rating?: string) {
@@ -31,7 +39,7 @@ function getCategoryColor(category?: string) {
   }
 }
 
-export default function SkillCard({ skill, onInstall, onView, installing }: SkillCardProps) {
+export default function SkillCard({ skill, onInstall, onView, installing, showPreviewButton = false, customUrl, meta }: SkillCardProps) {
   const { i18n } = useTranslation()
   
   // Select description based on current language
@@ -41,9 +49,34 @@ export default function SkillCard({ skill, onInstall, onView, installing }: Skil
 
   return (
     <div
-      className="card p-4 cursor-pointer flex flex-col overflow-hidden"
+      className="card p-0 cursor-pointer flex flex-col overflow-hidden"
       onClick={() => onView?.(skill)}
     >
+      <div className="relative h-32 w-full overflow-hidden border-b border-border-light bg-secondary">
+        {meta?.coverUrl ? (
+          <img
+            src={meta.coverUrl}
+            alt={skill.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="h-full w-full bg-gradient-to-br from-foreground/10 via-secondary to-background flex items-center justify-center text-[11px] uppercase tracking-wider text-muted-foreground">
+            No cover
+          </div>
+        )}
+        {showPreviewButton && onView && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onView(skill)
+            }}
+            className="absolute bottom-2 right-2 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider bg-background/90 border border-border-light hover:border-foreground hover:bg-background transition-colors"
+          >
+            Preview
+          </button>
+        )}
+      </div>
+      <div className="p-4 flex flex-col flex-1">
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="min-w-0 flex-1">
@@ -56,7 +89,9 @@ export default function SkillCard({ skill, onInstall, onView, installing }: Skil
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">by {skill.author}</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">
+            {meta?.ownerName ? `by ${meta.ownerName}` : `by ${skill.author}`}
+          </p>
         </div>
         {skill.simple_rating && (
           <span className={`px-2 py-0.5 text-xs font-bold uppercase flex-shrink-0 ${getRatingBadge(skill.simple_rating)}`}>
@@ -71,7 +106,7 @@ export default function SkillCard({ skill, onInstall, onView, installing }: Skil
       </p>
 
       {/* Meta info */}
-      <div className="flex items-center gap-2 text-sm mb-3 min-w-0">
+      <div className="flex items-center gap-2 text-sm mb-3 min-w-0 flex-wrap">
         {skill.github_stars !== undefined && skill.github_stars > 0 && (
           <span className="flex items-center gap-1 text-muted-foreground flex-shrink-0">
             <Star size={14} className="text-yellow-500" />
@@ -81,28 +116,54 @@ export default function SkillCard({ skill, onInstall, onView, installing }: Skil
         <span className={`tag text-white truncate max-w-[120px] ${getCategoryColor(skill.category)}`}>
           {skill.category}
         </span>
+        {meta?.views !== undefined && (
+          <span className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+            <Eye size={12} />
+            {meta.views.toLocaleString()} views
+          </span>
+        )}
+        {meta?.downloads !== undefined && (
+          <span className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+            <Download size={12} />
+            {meta.downloads.toLocaleString()} installs
+          </span>
+        )}
       </div>
 
       {/* Actions - 使用 mt-auto 推到底部 */}
       <div className="flex items-center justify-between gap-2 mt-auto pt-2 border-t border-border-light">
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           {onView && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onView(skill)
-              }}
-              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-              title="View Details"
-            >
-              <Eye size={16} />
-            </button>
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onView(skill)
+                }}
+                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                title="View Details"
+              >
+                <Eye size={16} />
+              </button>
+              {showPreviewButton && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onView(skill)
+                  }}
+                  className="btn btn-secondary px-3 py-1.5 text-xs uppercase tracking-wider"
+                >
+                  Preview
+                </button>
+              )}
+            </>
           )}
           <button
             onClick={(e) => {
               e.stopPropagation()
               const skillhubUrl = import.meta.env.VITE_SKILLHUB_API_URL || 'https://www.skillhub.club'
-              open(`${skillhubUrl}/skills/${skill.slug}`).catch(console.error)
+              const path = customUrl || `/skills/${skill.slug}`
+              open(`${skillhubUrl}${path.startsWith('/') ? '' : '/'}${path}`).catch(console.error)
             }}
             className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
             title="View on SkillHub"
@@ -125,6 +186,7 @@ export default function SkillCard({ skill, onInstall, onView, installing }: Skil
           )}
           <span>{installing ? '...' : 'Install'}</span>
         </button>
+      </div>
       </div>
     </div>
   )

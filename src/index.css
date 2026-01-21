@@ -292,3 +292,77 @@ h1, h2, h3, h4, h5, h6 {
     transform: scale3d(0, 0, 1);
   }
 }
+
+/* MDEditor Dark Mode Support */
+.dark [data-color-mode="dark"] .w-md-editor {
+  --color-canvas-default: var(--background);
+  --color-canvas-subtle: var(--secondary);
+  --color-fg-default: var(--foreground);
+  --color-fg-muted: var(--muted-foreground);
+  --color-border-default: var(--border-light);
+  --color-border-muted: var(--border-light);
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+.dark [data-color-mode="dark"] .w-md-editor-toolbar {
+  background-color: var(--secondary) !important;
+  border-color: var(--border-light) !important;
+}
+
+.dark [data-color-mode="dark"] .w-md-editor-toolbar li > button {
+  color: var(--foreground) !important;
+}
+
+.dark [data-color-mode="dark"] .w-md-editor-toolbar li > button:hover {
+  background-color: var(--muted) !important;
+}
+
+.dark [data-color-mode="dark"] .w-md-editor-text-pre,
+.dark [data-color-mode="dark"] .w-md-editor-text-input,
+.dark [data-color-mode="dark"] .w-md-editor-text {
+  color: var(--foreground) !important;
+}
+
+.dark [data-color-mode="dark"] .wmde-markdown {
+  background-color: transparent !important;
+  color: var(--foreground) !important;
+}
+
+.dark [data-color-mode="dark"] .wmde-markdown pre,
+.dark [data-color-mode="dark"] .wmde-markdown code {
+  background-color: var(--secondary) !important;
+  color: var(--foreground) !important;
+}
+
+.dark [data-color-mode="dark"] .wmde-markdown h1,
+.dark [data-color-mode="dark"] .wmde-markdown h2,
+.dark [data-color-mode="dark"] .wmde-markdown h3,
+.dark [data-color-mode="dark"] .wmde-markdown h4,
+.dark [data-color-mode="dark"] .wmde-markdown h5,
+.dark [data-color-mode="dark"] .wmde-markdown h6 {
+  color: var(--foreground) !important;
+  border-color: var(--border-light) !important;
+}
+
+.dark [data-color-mode="dark"] .wmde-markdown a {
+  color: #60a5fa !important;
+}
+
+.dark [data-color-mode="dark"] .wmde-markdown blockquote {
+  border-color: var(--border-light) !important;
+  color: var(--muted-foreground) !important;
+}
+
+.dark [data-color-mode="dark"] .wmde-markdown table th,
+.dark [data-color-mode="dark"] .wmde-markdown table td {
+  border-color: var(--border-light) !important;
+}
+
+.dark [data-color-mode="dark"] .wmde-markdown table tr:nth-child(2n) {
+  background-color: var(--secondary) !important;
+}
+
+.dark [data-color-mode="dark"] .wmde-markdown hr {
+  background-color: var(--border-light) !important;
+}
