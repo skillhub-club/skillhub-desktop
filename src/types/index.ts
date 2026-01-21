@@ -122,3 +122,105 @@ export interface FileNode {
   content?: string
   metadata?: SkillFileMetadata
 }
+
+// User Hosted Skills Types
+export type SkillVisibility = 'public' | 'unlisted' | 'private'
+export type SkillStatus = 'draft' | 'published' | 'archived'
+export type FileKind = 'skill_md' | 'manifest' | 'script' | 'reference' | 'asset' | 'other'
+
+export interface UserSkill {
+  id: string
+  name: string
+  slug: string
+  description: string
+  description_zh?: string
+  category: string
+  tags: string[]
+  visibility: SkillVisibility
+  status: SkillStatus
+  currentVersion: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface UserSkillFile {
+  filepath: string
+  content?: string
+  storagePath?: string
+  kind: FileKind
+  contentType: string
+  size?: number
+  hash?: string
+}
+
+export interface CreateUserSkillRequest {
+  name: string
+  description: string
+  description_zh?: string
+  category: string
+  tags?: string[]
+  visibility?: SkillVisibility
+}
+
+export interface UploadFilesRequest {
+  files: UserSkillFile[]
+  changeSummary?: string
+}
+
+export interface UploadUrlRequest {
+  filepath: string
+  contentType: string
+  size: number
+  kind: FileKind
+}
+
+export interface UploadUrlResponse {
+  bucket: string
+  storagePath: string
+  uploadUrl: string
+  expiresIn: number
+}
+
+export interface PublishSkillRequest {
+  version: number
+  changeSummary?: string
+}
+
+export interface SkillVersion {
+  version: number
+  changeSummary?: string
+  createdAt: string
+  publishedAt?: string
+}
+
+// Marketplace (user-hosted) skills
+export type MarketplaceSortOption = 'published_at_desc' | 'updated_at_desc' | 'views_desc' | 'downloads_desc' | 'name_asc'
+
+export interface MarketplaceSkill extends UserSkill {
+  ownerName?: string
+  ownerId?: string
+  ownerAvatar?: string
+  coverUrl?: string
+  hasCover?: boolean
+  downloads?: number
+  views?: number
+  published_at?: string
+  updated_at?: string
+}
+
+export interface MarketplaceQuery {
+  page?: number
+  pageSize?: number
+  q?: string
+  category?: string
+  tag?: string
+  hasCover?: boolean
+  sort?: MarketplaceSortOption
+}
+
+export interface MarketplaceResponse {
+  skills: MarketplaceSkill[]
+  page: number
+  page_size: number
+  total: number
+}
