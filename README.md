@@ -4,13 +4,14 @@ A desktop application for managing AI coding skills across multiple tools. Brows
 
 <p align="center">
   <a href="https://www.skillhub.club">
-    https://www.skillstore.club/
     <img src="https://www.skillstore.club/icon.svg" alt="SkillHub Desktop" width="600" />
   </a>
+  <br />
+  <a href="https://www.skillhub.club">www.skillhub.club</a>
 </p>
 
 <p align="center">
-  <strong>Supported by <a href="https://www.skillhub.club">SkillHub.club</a></strong> - The community-driven platform for AI coding skills
+  <strong>Supported by <a href="https://www.skillhub.club">SkillHub.club</a></strong> - The community-driven platform for AI Agent skills
 </p>
 
 <p align="center">
@@ -138,6 +139,10 @@ npm run tauri build
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=skillhub-club/skillhub-desktop&type=date&legend=top-left)](https://www.star-history.com/#skillhub-club/skillhub-desktop&type=date&legend=top-left)
 
 ## License
 
