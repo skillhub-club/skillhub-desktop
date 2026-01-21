@@ -8,6 +8,7 @@
     "shell:allow-open",
     "dialog:default",
     "fs:default",
+    "pty:default",
     "fs:allow-read",
     "fs:allow-write",
     "fs:allow-exists",

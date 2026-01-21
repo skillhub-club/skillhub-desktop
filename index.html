@@ -5,6 +5,27 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SkillHub Desktop</title>
+    <script>
+      // Apply theme immediately to prevent flash
+      // Default to dark mode, but check localStorage for user preference
+      (function() {
+        try {
+          var stored = localStorage.getItem('skillhub-desktop-storage');
+          if (stored) {
+            var state = JSON.parse(stored).state;
+            if (state && state.theme === 'light') {
+              // User chose light mode
+              return;
+            }
+          }
+          // Default to dark mode
+          document.documentElement.classList.add('dark');
+        } catch (e) {
+          // On error, default to dark mode
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

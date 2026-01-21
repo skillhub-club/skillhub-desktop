@@ -14,7 +14,13 @@ export interface TokenData {
   expiresAt: number // timestamp in ms
 }
 
+export type Theme = 'light' | 'dark'
+
 interface AppState {
+  // Theme
+  theme: Theme
+  setTheme: (theme: Theme) => void
+
   // Auth
   isAuthenticated: boolean
   user: User | null
@@ -72,6 +78,18 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
+      // Theme - default to dark
+      theme: 'dark' as Theme,
+      setTheme: (theme: Theme) => {
+        // Apply theme class to document
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+        set({ theme })
+      },
+
       // Auth
       isAuthenticated: false,
       user: null,
@@ -150,6 +168,8 @@ export const useAppStore = create<AppState>()(
     {
       name: 'skillhub-desktop-storage',
       partialize: (state) => ({
+        // Theme (persisted)
+        theme: state.theme,
         // Auth (persisted)
         isAuthenticated: state.isAuthenticated,
         user: state.user,
@@ -165,6 +185,14 @@ export const useAppStore = create<AppState>()(
         installTarget: state.installTarget,
         projectPath: state.projectPath,
       }),
+      onRehydrateStorage: () => (state) => {
+        // Apply theme on rehydration (after loading from localStorage)
+        if (state?.theme === 'dark') {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+      },
     }
   )
 )

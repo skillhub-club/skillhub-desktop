@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  /* Swiss Design - Pure Black & White */
+  /* Swiss Design - Light Mode (Pure Black & White) */
   --background: #FFFFFF;
   --foreground: #000000;
   --card: #FFFFFF;
@@ -22,6 +22,35 @@
   --ring: #000000;
   --radius: 0px;
 
+  /* Craft Agents Style - RGB values for shadows */
+  --foreground-rgb: 0, 0, 0;
+  --success: #22c55e;
+  --success-rgb: 34, 197, 94;
+  --destructive: #ef4444;
+  --destructive-rgb: 239, 68, 68;
+  --info: #f59e0b;
+  --info-rgb: 245, 158, 11;
+
+  /* Shadow opacity values */
+  --shadow-border-opacity: 0.08;
+  --shadow-blur-opacity: 0.06;
+
+  /* Shadow definitions */
+  --shadow-minimal:
+    rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+    rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+    rgba(var(--foreground-rgb), 0.06) 0px 0px 0px 1px,
+    rgba(0, 0, 0, var(--shadow-blur-opacity)) 0px 1px 1px -0.5px,
+    rgba(0, 0, 0, var(--shadow-blur-opacity)) 0px 3px 3px -1.5px;
+
+  --shadow-middle:
+    rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+    rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+    rgba(var(--foreground-rgb), 0.06) 0px 0px 0px 1px,
+    rgba(0, 0, 0, var(--shadow-blur-opacity)) 0px 1px 1px -0.5px,
+    rgba(0, 0, 0, var(--shadow-blur-opacity)) 0px 3px 3px -1.5px,
+    rgba(0, 0, 0, var(--shadow-blur-opacity)) 0px 6px 6px -3px;
+
   font-family: Inter, system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -31,6 +60,49 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark Mode */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #0a0a0a;
+  --card-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #fafafa;
+  --muted: #1a1a1a;
+  --muted-foreground: #a1a1a1;
+  --accent: #1a1a1a;
+  --accent-foreground: #fafafa;
+  --border: #fafafa;
+  --border-light: #2a2a2a;
+  --input: #0a0a0a;
+  --ring: #fafafa;
+
+  /* Dark mode RGB values */
+  --foreground-rgb: 250, 250, 250;
+
+  /* Shadow adjustments for dark mode */
+  --shadow-border-opacity: 0.15;
+  --shadow-blur-opacity: 0.3;
+
+  /* Dark mode shadows with lighter borders */
+  --shadow-minimal:
+    rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+    rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+    rgba(255, 255, 255, 0.08) 0px 0px 0px 1px,
+    rgba(0, 0, 0, 0.4) 0px 1px 1px -0.5px,
+    rgba(0, 0, 0, 0.4) 0px 3px 3px -1.5px;
+
+  --shadow-middle:
+    rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+    rgba(0, 0, 0, 0) 0px 0px 0px 0px,
+    rgba(255, 255, 255, 0.08) 0px 0px 0px 1px,
+    rgba(0, 0, 0, 0.4) 0px 1px 1px -0.5px,
+    rgba(0, 0, 0, 0.4) 0px 3px 3px -1.5px,
+    rgba(0, 0, 0, 0.4) 0px 6px 6px -3px;
 }
 
 * {
@@ -119,11 +191,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--foreground);
+  background: var(--muted-foreground);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
+  background: var(--foreground);
 }
 
 /* Selection - Swiss */
@@ -174,4 +246,49 @@ h1, h2, h3, h4, h5, h6 {
 
 .animate-slide-up {
   animation: slideUp 0.3s ease-out forwards;
+}
+
+/* Craft Agents Style - Shadow utilities */
+@layer utilities {
+  .shadow-minimal {
+    box-shadow: var(--shadow-minimal);
+  }
+
+  .shadow-middle {
+    box-shadow: var(--shadow-middle);
+  }
+}
+
+/* Spinner - Grid style from Craft Agents */
+.spinner {
+  display: inline-grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 1em;
+  height: 1em;
+  gap: 0.08em;
+}
+
+.spinner-cube {
+  background-color: currentColor;
+  animation: spinner-grid 1.3s infinite ease-in-out;
+  transform: scale3d(0.5, 0.5, 1);
+}
+
+.spinner-cube:nth-child(1) { animation-delay: 0.2s; }
+.spinner-cube:nth-child(2) { animation-delay: 0.3s; }
+.spinner-cube:nth-child(3) { animation-delay: 0.4s; }
+.spinner-cube:nth-child(4) { animation-delay: 0.1s; }
+.spinner-cube:nth-child(5) { animation-delay: 0.2s; }
+.spinner-cube:nth-child(6) { animation-delay: 0.3s; }
+.spinner-cube:nth-child(7) { animation-delay: 0s; }
+.spinner-cube:nth-child(8) { animation-delay: 0.1s; }
+.spinner-cube:nth-child(9) { animation-delay: 0.2s; }
+
+@keyframes spinner-grid {
+  0%, 70%, 100% {
+    transform: scale3d(0.5, 0.5, 1);
+  }
+  35% {
+    transform: scale3d(0, 0, 1);
+  }
 }

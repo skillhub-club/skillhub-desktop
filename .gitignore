@@ -34,3 +34,7 @@ src-tauri/target/
 *.p12
 *.pfx
 .env.production
+
+# Local docs and planning files
+docs/
+NEW_FEATURE*.md

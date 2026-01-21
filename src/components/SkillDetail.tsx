@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { X, Star, Download, ExternalLink, Github, Tag, FileText, Loader2, Folder, FolderOpen, ChevronRight, ChevronDown, Square, CheckSquare } from 'lucide-react'
+import { X, Star, Download, ExternalLink, Github, Tag, FileText, Loader2, Folder, FolderOpen, ChevronRight, ChevronDown, Square, CheckSquare, Play } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
 import { useTranslation } from 'react-i18next'
 import type { SkillHubSkill, SkillFileNode, SkillFilesResponse } from '../types'
@@ -7,6 +7,8 @@ import { getSkillDetail, installSkill, installSkillFiles, getSkillFiles, getFile
 import { useAppStore } from '../store'
 import ToolSelector from './ToolSelector'
 import FilePreview from './FilePreview'
+import SkillPlayground from './SkillPlayground'
+
 
 interface SkillDetailProps {
   skill: SkillHubSkill
@@ -154,6 +156,9 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
   const [fileContent, setFileContent] = useState<string>('')
   const [fileContentLoading, setFileContentLoading] = useState(false)
   const [checkedFiles, setCheckedFiles] = useState<Set<string>>(new Set())
+
+  // Playground state
+  const [showPlayground, setShowPlayground] = useState(false)
   
   // Calculate all file paths for "select all"
   const allFilePaths = useMemo(() => {
@@ -562,6 +567,13 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
               Cancel
             </button>
             <button
+              onClick={() => setShowPlayground(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm bg-purple-600 text-white font-semibold rounded hover:bg-purple-700 transition-all"
+            >
+              <Play size={14} />
+              Try
+            </button>
+            <button
               onClick={handleInstall}
               disabled={installing || selectedToolIds.length === 0}
               className="flex items-center gap-2 px-4 py-2 text-sm bg-foreground text-background font-semibold rounded hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
@@ -581,6 +593,23 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
           </div>
         </div>
       </div>
+
+      {/* Skill Playground Modal */}
+      {showPlayground && (
+        <SkillPlayground
+          skills={[{
+            id: skill.id,
+            name: skill.name,
+            slug: skill.slug,
+            content: skill.skill_md_raw,
+          }]}
+          onClose={() => setShowPlayground(false)}
+          onInstall={() => {
+            setShowPlayground(false)
+            handleInstall()
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { detectTools, getInstalledSkills, readSkillContent, installSkill } from 
 import ToolIcon from '../components/ToolIcon'
 import type { InstalledSkill } from '../types'
 
+
 type SyncMode = 'copy' | 'compare'
 
 interface SkillConflict {

@@ -9,6 +9,7 @@ import { smartInstallSkill } from '../api/skillhub'
 import SkillDetail from '../components/SkillDetail'
 import type { FavoriteSkill, SkillHubSkill } from '../types'
 
+
 export default function Favorites() {
   const { t } = useTranslation()
   const { isAuthenticated, favorites, setFavorites, tools, showToast, logout } = useAppStore()

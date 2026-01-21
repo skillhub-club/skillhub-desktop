@@ -8,6 +8,7 @@ import { fetchCollections as apiFetchCollections, SKILLHUB_URL } from '../api/au
 import { smartInstallSkill } from '../api/skillhub'
 import type { SkillCollection, SkillHubSkill } from '../types'
 
+
 export default function Collections() {
   const { t } = useTranslation()
   const { isAuthenticated, collections, setCollections, tools, showToast, logout } = useAppStore()

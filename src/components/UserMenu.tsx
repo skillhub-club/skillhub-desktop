@@ -4,7 +4,11 @@ import { open } from '@tauri-apps/plugin-shell'
 import { useAppStore } from '../store'
 import { exchangeCodeForTokens, SKILLHUB_URL } from '../api/auth'
 
-export default function UserMenu() {
+interface UserMenuProps {
+  collapsed?: boolean
+}
+
+export default function UserMenu({ collapsed = false }: UserMenuProps) {
   const { isAuthenticated, user, login, logout, showToast, setFavorites, setCollections } = useAppStore()
   const [showMenu, setShowMenu] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
@@ -94,10 +98,11 @@ export default function UserMenu() {
       <>
         <button
           onClick={handleLoginClick}
-          className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-background border-2 border-transparent hover:border-foreground transition-all"
+          title={collapsed ? 'Sign in' : undefined}
+          className={`flex items-center ${collapsed ? 'justify-center p-3' : 'gap-2 px-3 py-2.5'} w-full text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-background border-2 border-transparent hover:border-foreground transition-all`}
         >
           <LogIn size={18} />
-          <span>Sign in</span>
+          {!collapsed && <span>Sign in</span>}
         </button>
 
         {/* Login Modal */}
@@ -147,32 +152,41 @@ export default function UserMenu() {
     <div className="relative">
       <button
         onClick={() => setShowMenu(!showMenu)}
-        className="flex items-center gap-2 w-full px-3 py-2 hover:bg-background border-2 border-transparent hover:border-foreground transition-all"
+        title={collapsed ? (user?.name || user?.github_username || 'User') : undefined}
+        className={`flex items-center ${collapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2'} w-full hover:bg-background border-2 border-transparent hover:border-foreground transition-all`}
       >
         {user?.avatar_url ? (
-          <img src={user.avatar_url} alt="" className="w-8 h-8" />
+          <img src={user.avatar_url} alt="" className={collapsed ? 'w-7 h-7' : 'w-8 h-8'} />
         ) : (
-          <div className="w-8 h-8 bg-foreground flex items-center justify-center">
-            <User size={16} className="text-background" />
+          <div className={`${collapsed ? 'w-7 h-7' : 'w-8 h-8'} bg-foreground flex items-center justify-center`}>
+            <User size={collapsed ? 14 : 16} className="text-background" />
           </div>
         )}
-        <div className="flex-1 text-left">
-          <p className="text-sm font-bold text-foreground truncate">
-            {user?.name || user?.github_username || 'User'}
-          </p>
-        </div>
-        <ChevronDown size={16} className="text-muted-foreground" />
+        {!collapsed && (
+          <>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-bold text-foreground truncate">
+                {user?.name || user?.github_username || 'User'}
+              </p>
+            </div>
+            <ChevronDown size={16} className="text-muted-foreground" />
+          </>
+        )}
       </button>
 
       {showMenu && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-          <div className="absolute bottom-full left-0 right-0 mb-1 bg-background border-2 border-foreground z-50">
+          <div className={`absolute z-50 bg-background border-2 border-foreground ${
+            collapsed 
+              ? 'left-full bottom-0 ml-1 min-w-[160px]'  // Pop out to the right when collapsed
+              : 'bottom-full left-0 right-0 mb-1'         // Pop up when expanded
+          }`}>
             <a
               href={`${SKILLHUB_URL}/app/favorites`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-3 py-2 text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-secondary"
+              className="flex items-center gap-2 px-3 py-2 text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-secondary whitespace-nowrap"
               onClick={() => setShowMenu(false)}
             >
               <Heart size={16} />
@@ -180,7 +194,7 @@ export default function UserMenu() {
             </a>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm font-semibold uppercase tracking-wider text-red-600 hover:bg-red-50"
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm font-semibold uppercase tracking-wider text-red-600 hover:bg-red-50 dark:hover:bg-red-950 whitespace-nowrap"
             >
               <LogOut size={16} />
               Sign out

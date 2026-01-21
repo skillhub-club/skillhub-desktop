@@ -105,6 +105,10 @@ export async function authenticatedFetch(
     throw new Error('Not authenticated')
   }
 
+  // Clone the body for potential retry (body can only be consumed once)
+  // If body is a string, we can reuse it; otherwise clone the options
+  const bodyForRetry = options.body
+
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -122,6 +126,7 @@ export async function authenticatedFetch(
       const newToken = useAppStore.getState().accessToken
       return fetch(url, {
         ...options,
+        body: bodyForRetry, // Use the saved body for retry
         headers: {
           ...options.headers,
           Authorization: `Bearer ${newToken}`,
@@ -195,6 +200,85 @@ export async function exchangeCodeForTokens(code: string) {
     expiresIn: data.expires_in,
     scope: data.scope,
   }
+}
+
+// Fetch account overview (quota, credits, tier)
+export async function fetchAccountOverview() {
+  const response = await authenticatedFetch(`${SKILLHUB_URL}/api/v1/oauth/account`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch account info')
+  }
+
+  return response.json()
+}
+
+// Fetch usage stats
+export async function fetchUsageStats() {
+  const response = await authenticatedFetch(`${SKILLHUB_URL}/api/v1/oauth/usage`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch usage stats')
+  }
+
+  return response.json()
+}
+
+// Fetch API keys
+export async function fetchApiKeys() {
+  const response = await authenticatedFetch(`${SKILLHUB_URL}/api/v1/oauth/api-keys`)
+
+  if (!response.ok) {
+    // Try to get error message from response
+    try {
+      const data = await response.json()
+      throw new Error(data.error || `Failed to fetch API keys (${response.status})`)
+    } catch {
+      throw new Error(`Failed to fetch API keys (${response.status})`)
+    }
+  }
+
+  return response.json()
+}
+
+// Create API key
+export async function createApiKey(name: string) {
+  const response = await authenticatedFetch(`${SKILLHUB_URL}/api/v1/oauth/api-keys`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+
+  if (!response.ok) {
+    const data = await response.json()
+    throw new Error(data.error || 'Failed to create API key')
+  }
+
+  return response.json()
+}
+
+// Delete API key
+export async function deleteApiKey(id: string) {
+  const response = await authenticatedFetch(`${SKILLHUB_URL}/api/v1/oauth/api-keys/${id}`, {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to delete API key')
+  }
+
+  return response.json()
+}
+
+// Fetch wallet balance
+export async function fetchWallet() {
+  const response = await authenticatedFetch(`${SKILLHUB_URL}/api/v1/oauth/wallet`)
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch wallet')
+  }
+
+  return response.json()
 }
 
 export { SKILLHUB_URL, OAUTH_CLIENT_ID }

@@ -1,3 +1,4 @@
+mod installer;
 mod tools;
 
 use serde::{Deserialize, Serialize};
@@ -392,12 +393,130 @@ async fn list_skills_in_dir(dir_path: String) -> Result<Vec<InstalledSkill>, Str
     tools::list_skills_in_dir(&dir_path).await
 }
 
+// Install skill to ~/.claude/skills/ temporarily for playground
+#[tauri::command]
+async fn install_temp_skill(skill_name: String, content: String) -> Result<String, String> {
+    use tokio::fs;
+
+    let home = dirs::home_dir().ok_or("Cannot find home directory")?;
+    let skills_dir = home.join(".claude").join("skills").join(&skill_name);
+
+    fs::create_dir_all(&skills_dir)
+        .await
+        .map_err(|e| format!("Failed to create skill dir: {}", e))?;
+
+    let skill_file = skills_dir.join("SKILL.md");
+    fs::write(&skill_file, content)
+        .await
+        .map_err(|e| format!("Failed to write skill: {}", e))?;
+
+    Ok(skills_dir.to_string_lossy().to_string())
+}
+
+// Uninstall temp skill from ~/.claude/skills/
+#[tauri::command]
+async fn uninstall_temp_skill(skill_path: String) -> Result<(), String> {
+    use tokio::fs;
+
+    let path = std::path::Path::new(&skill_path);
+    if path.exists() && path.is_dir() {
+        fs::remove_dir_all(&path)
+            .await
+            .map_err(|e| format!("Failed to cleanup temp skill: {}", e))?;
+    }
+    Ok(())
+}
+
+// Write skill content to temp file (legacy, kept for compatibility)
+#[tauri::command]
+async fn write_temp_skill(skill_id: String, content: String) -> Result<String, String> {
+    use tokio::fs;
+
+    let temp_dir = std::env::temp_dir().join("skillhub");
+    fs::create_dir_all(&temp_dir)
+        .await
+        .map_err(|e| format!("Failed to create temp dir: {}", e))?;
+
+    let file_path = temp_dir.join(format!("{}.md", skill_id));
+    fs::write(&file_path, content)
+        .await
+        .map_err(|e| format!("Failed to write temp skill: {}", e))?;
+
+    Ok(file_path.to_string_lossy().to_string())
+}
+
+// Cleanup temp skill file (legacy)
+#[tauri::command]
+async fn cleanup_temp_skill(path: String) -> Result<(), String> {
+    use tokio::fs;
+
+    if std::path::Path::new(&path).exists() {
+        fs::remove_file(&path)
+            .await
+            .map_err(|e| format!("Failed to cleanup temp skill: {}", e))?;
+    }
+    Ok(())
+}
+
+// ============================================
+// Installer Commands
+// ============================================
+
+// Check all dependencies status (Homebrew/winget, Node.js, npm, Claude Code, config)
+#[tauri::command]
+fn check_dependencies() -> installer::DependencyStatus {
+    installer::check_all_dependencies()
+}
+
+// Get installation steps for missing dependencies
+#[tauri::command]
+fn get_install_steps() -> Vec<installer::InstallStep> {
+    installer::get_install_steps()
+}
+
+// Get a specific installation command
+#[tauri::command]
+fn get_install_command(step_id: String) -> Result<installer::InstallStep, String> {
+    installer::get_install_command(&step_id)
+}
+
+// Configure Claude Code to use SkillHub API
+#[tauri::command]
+async fn configure_claude_code(api_key: String) -> Result<(), String> {
+    installer::configure_claude_code(&api_key).await
+}
+
+// Remove Claude Code configuration
+#[tauri::command]
+async fn remove_claude_code_config() -> Result<(), String> {
+    installer::remove_claude_code_config().await
+}
+
+// Validate API key against SkillHub API
+#[tauri::command]
+async fn validate_api_key(api_key: String) -> Result<installer::ApiKeyValidationResult, String> {
+    installer::validate_api_key(&api_key).await
+}
+
+// Get manual installation instructions for a step
+#[tauri::command]
+fn get_manual_install_instructions(step_id: String) -> installer::ManualInstallInstructions {
+    installer::get_manual_install_instructions(&step_id)
+}
+
+// Get Claude Code environment variables (for PTY spawn)
+#[tauri::command]
+fn get_claude_env_vars() -> Vec<(String, String)> {
+    installer::get_claude_env_vars()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_pty::init())
         .invoke_handler(tauri::generate_handler![
             detect_tools,
             get_installed_skills,
@@ -421,6 +540,19 @@ pub fn run() {
             get_tool_directories,
             copy_skill,
             list_skills_in_dir,
+            install_temp_skill,
+            uninstall_temp_skill,
+            write_temp_skill,
+            cleanup_temp_skill,
+            // Installer commands
+            check_dependencies,
+            get_install_steps,
+            get_install_command,
+            configure_claude_code,
+            remove_claude_code_config,
+            validate_api_key,
+            get_manual_install_instructions,
+            get_claude_env_vars,
         ])
         .setup(|app| {
             // Create tray menu
