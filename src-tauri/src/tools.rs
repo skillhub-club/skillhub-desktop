@@ -172,6 +172,35 @@ const SUPPORTED_TOOLS: &[ToolConfig] = &[
     // Note: VS Code uses GitHub Copilot for skills, so no separate vscode entry needed
 ];
 
+fn fnv1a_hash(input: &str) -> u64 {
+    let mut hash: u64 = 14695981039346656037;
+    for b in input.as_bytes() {
+        hash ^= *b as u64;
+        hash = hash.wrapping_mul(1099511628211);
+    }
+    hash
+}
+
+fn build_folder_name(skill_name: &str) -> String {
+    let trimmed = skill_name.trim();
+    if trimmed.is_empty() {
+        return "skill".to_string();
+    }
+
+    let sanitized = trimmed
+        .to_lowercase()
+        .replace(' ', "-")
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect::<String>();
+
+    if !sanitized.is_empty() {
+        return sanitized;
+    }
+
+    format!("skill-{:x}", fnv1a_hash(trimmed))
+}
+
 fn get_home_dir() -> Option<PathBuf> {
     dirs::home_dir()
 }
@@ -402,12 +431,7 @@ pub async fn install_skill_to_tools(
     let mut installed_paths = Vec::new();
 
     // Create a safe folder name from skill name
-    let folder_name = skill_name
-        .to_lowercase()
-        .replace(' ', "-")
-        .chars()
-        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
-        .collect::<String>();
+    let folder_name = build_folder_name(skill_name);
 
     for tool_id in tool_ids {
         let tool = SUPPORTED_TOOLS
@@ -464,20 +488,14 @@ pub async fn install_skill_to_project(
         .ok_or_else(|| format!("Unknown tool: {}", tool_id))?;
 
     // Create a safe folder name from skill name
-    let folder_name = skill_name
-        .to_lowercase()
-        .replace(' ', "-")
-        .chars()
-        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
-        .collect::<String>();
+    let folder_name = build_folder_name(skill_name);
 
     // Build the project skills directory path
     // e.g., /path/to/project/.claude/skills/skill-name/SKILL.md
-    let config_folder = tool.config_paths[0].trim_start_matches('.');
     let skills_dir = if tool.primary_subpath == "." {
-        project_dir.join(config_folder)
+        project_dir.join(tool.config_paths[0])
     } else {
-        project_dir.join(config_folder).join(tool.primary_subpath)
+        project_dir.join(tool.config_paths[0]).join(tool.primary_subpath)
     };
 
     // Create skills directory if it doesn't exist
@@ -498,6 +516,65 @@ pub async fn install_skill_to_project(
         .map_err(|e| format!("Failed to write skill file: {}", e))?;
 
     Ok(skill_file.to_string_lossy().to_string())
+}
+
+pub async fn install_skill_files_to_project(
+    files: &[(String, String)],
+    skill_name: &str,
+    project_path: &str,
+    tool_id: &str,
+) -> Result<String, String> {
+    let project_dir = PathBuf::from(project_path);
+
+    if !project_dir.exists() {
+        return Err(format!("Project directory does not exist: {}", project_path));
+    }
+
+    let tool = SUPPORTED_TOOLS
+        .iter()
+        .find(|t| t.id == tool_id)
+        .ok_or_else(|| format!("Unknown tool: {}", tool_id))?;
+
+    let folder_name = build_folder_name(skill_name);
+
+    // Build the project skills directory path
+    let skills_dir = if tool.primary_subpath == "." {
+        project_dir.join(tool.config_paths[0])
+    } else {
+        project_dir.join(tool.config_paths[0]).join(tool.primary_subpath)
+    };
+
+    // Create skills directory if it doesn't exist
+    if !skills_dir.exists() {
+        fs::create_dir_all(&skills_dir)
+            .await
+            .map_err(|e| format!("Failed to create skills directory: {}", e))?;
+    }
+
+    let skill_dir = skills_dir.join(&folder_name);
+    fs::create_dir_all(&skill_dir)
+        .await
+        .map_err(|e| format!("Failed to create skill directory: {}", e))?;
+
+    // Install each file
+    for (relative_path, content) in files {
+        let file_path = skill_dir.join(relative_path);
+
+        // Create parent directories if needed
+        if let Some(parent) = file_path.parent() {
+            if !parent.exists() {
+                fs::create_dir_all(parent)
+                    .await
+                    .map_err(|e| format!("Failed to create directory: {}", e))?;
+            }
+        }
+
+        fs::write(&file_path, content)
+            .await
+            .map_err(|e| format!("Failed to write file {}: {}", relative_path, e))?;
+    }
+
+    Ok(skill_dir.to_string_lossy().to_string())
 }
 
 pub async fn uninstall_skill(skill_path: &str) -> Result<(), String> {
@@ -532,12 +609,7 @@ pub async fn install_skill_files_to_tools(
     let mut installed_paths = Vec::new();
 
     // Create a safe folder name from skill name
-    let folder_name = skill_name
-        .to_lowercase()
-        .replace(' ', "-")
-        .chars()
-        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
-        .collect::<String>();
+    let folder_name = build_folder_name(skill_name);
 
     for tool_id in tool_ids {
         let tool = SUPPORTED_TOOLS

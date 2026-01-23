@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Search, Loader2, ExternalLink, ChevronDown, ArrowUpDown, X, Users, Star } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
 import { useAppStore } from '../store'
-import { searchSkills, getCatalog, smartInstallSkill, detectTools, getKolList, type KolUser } from '../api/skillhub'
+import { searchSkills, getCatalog, smartInstallSkill, smartInstallSkillToProject, detectTools, getKolList, type KolUser } from '../api/skillhub'
 import SkillCard from '../components/SkillCard'
 import SkillDetail from '../components/SkillDetail'
 import KolDetail from '../components/KolDetail'
@@ -46,6 +46,13 @@ export default function Discover() {
     setCurrentCategory,
     currentSortBy,
     setCurrentSortBy,
+    discoverPage,
+    setDiscoverPage,
+    discoverTotalPages,
+    setDiscoverTotalPages,
+    discoverLastCategory,
+    discoverLastSortBy,
+    setDiscoverLastParams,
     selectedToolIds,
     tools,
     setTools,
@@ -60,8 +67,6 @@ export default function Discover() {
   const [installing, setInstalling] = useState(false)
 
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
   const [loadingMore, setLoadingMore] = useState(false)
 
   // KOL state
@@ -75,7 +80,14 @@ export default function Discover() {
   // Load catalog on mount and category/sort change
   useEffect(() => {
     if (!searchQuery) {
-      setCurrentPage(1)
+      const sameParams =
+        discoverLastCategory === currentCategory && discoverLastSortBy === currentSortBy
+
+      if (catalogSkills.length > 0 && sameParams) {
+        return
+      }
+
+      setDiscoverPage(1)
 
       // Special handling for KOL category
       if (currentCategory === 'kol') {
@@ -103,7 +115,8 @@ export default function Discover() {
       getCatalog(1, PAGE_SIZE, categoryParam, currentSortBy, typeParam)
         .then(data => {
           setCatalogSkills(data.skills || [])
-          setTotalPages(data.pagination?.totalPages || 1)
+          setDiscoverTotalPages(data.pagination?.totalPages || 1)
+          setDiscoverLastParams(currentCategory, currentSortBy)
         })
         .catch((error) => {
           console.error('Failed to load catalog:', error)
@@ -111,7 +124,20 @@ export default function Discover() {
         })
         .finally(() => setIsLoading(false))
     }
-  }, [currentCategory, searchQuery, currentSortBy, setCatalogSkills, setIsLoading, showToast])
+  }, [
+    currentCategory,
+    searchQuery,
+    currentSortBy,
+    catalogSkills.length,
+    discoverLastCategory,
+    discoverLastSortBy,
+    setCatalogSkills,
+    setDiscoverLastParams,
+    setDiscoverPage,
+    setDiscoverTotalPages,
+    setIsLoading,
+    showToast,
+  ])
 
   // Debounced search
   useEffect(() => {
@@ -136,15 +162,16 @@ export default function Discover() {
 
   // Load more
   const handleLoadMore = async () => {
-    if (loadingMore || currentPage >= totalPages) return
+    if (loadingMore || discoverPage >= discoverTotalPages) return
 
     setLoadingMore(true)
     try {
-      const nextPage = currentPage + 1
+      const nextPage = discoverPage + 1
       const data = await getCatalog(nextPage, PAGE_SIZE, currentCategory === 'all' ? undefined : currentCategory, currentSortBy)
       setCatalogSkills([...catalogSkills, ...(data.skills || [])])
-      setCurrentPage(nextPage)
-      setTotalPages(data.pagination?.totalPages || 1)
+      setDiscoverPage(nextPage)
+      setDiscoverTotalPages(data.pagination?.totalPages || 1)
+      setDiscoverLastParams(currentCategory, currentSortBy)
     } catch (error) {
       console.error('Failed to load more:', error)
       showToast('Failed to load more skills', 'error')
@@ -172,6 +199,7 @@ export default function Discover() {
   }
 
   const handleInstall = async () => {
+    if (installing) return
     if (!selectedSkill || selectedToolIds.length === 0) return
 
     const { installTarget, projectPath } = useAppStore.getState()
@@ -185,25 +213,7 @@ export default function Discover() {
     setInstalling(true)
     try {
       if (installTarget === 'project' && projectPath) {
-        // Install to project directory - for now, still use single file approach
-        // TODO: Support multi-file project install
-        const { invoke } = await import('@tauri-apps/api/core')
-        const { getSkillDetail } = await import('../api/skillhub')
-        const skill = await getSkillDetail(selectedSkill.slug)
-        const content = skill.skill_md_raw
-        
-        if (!content) {
-          throw new Error('No skill content available')
-        }
-        
-        for (const toolId of selectedToolIds) {
-          await invoke('install_skill_to_project', {
-            skill_content: content,
-            skill_name: selectedSkill.name,
-            project_path: projectPath,
-            tool_id: toolId,
-          })
-        }
+        await smartInstallSkillToProject(selectedSkill, projectPath, selectedToolIds)
         showToast(`Installed "${selectedSkill.name}" to project`, 'success')
       } else {
         // Install to personal (global) directory using smart install
@@ -225,7 +235,7 @@ export default function Discover() {
   }
 
   const displayedSkills = searchQuery.trim() ? searchResults : catalogSkills
-  const hasMore = !searchQuery && currentPage < totalPages
+  const hasMore = !searchQuery && discoverPage < discoverTotalPages
 
   return (
     <div className="p-6">
@@ -415,7 +425,7 @@ export default function Discover() {
 
               <p className="text-sm text-muted-foreground uppercase tracking-wider">
                 Showing {displayedSkills.length} skills
-                {!searchQuery && totalPages > 1 && ` (page ${currentPage} of ${totalPages})`}
+                {!searchQuery && discoverTotalPages > 1 && ` (page ${discoverPage} of ${discoverTotalPages})`}
               </p>
             </div>
           </>

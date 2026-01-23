@@ -429,12 +429,12 @@ export default function Sync() {
               
               {/* Conflict Warning */}
               {conflicts.length > 0 && (
-                <div className="mt-4 p-3 bg-yellow-50 border-2 border-yellow-400">
-                  <div className="flex items-center gap-2 text-yellow-700 font-semibold mb-2">
+                <div className="mt-4 p-3 bg-yellow-500/10 border-2 border-yellow-500">
+                  <div className="flex items-center gap-2 text-yellow-500 font-semibold mb-2">
                     <AlertTriangle size={16} />
                     {t('sync.conflictsDetected', { count: conflicts.length })}
                   </div>
-                  <ul className="text-sm text-yellow-600 space-y-1">
+                  <ul className="text-sm text-yellow-400 space-y-1">
                     {conflicts.slice(0, 3).map(c => (
                       <li key={c.skill.path}>
                         "{c.skill.name}" {t('sync.existsIn')} {c.existsIn.map(getToolName).join(', ')}
@@ -501,8 +501,8 @@ export default function Sync() {
                   </p>
                   
                   {conflicts.length > 0 && (
-                    <div className="mb-4 p-3 bg-yellow-50 border-2 border-yellow-400">
-                      <div className="flex items-center gap-2 text-yellow-700 font-semibold mb-2">
+                    <div className="mb-4 p-3 bg-yellow-500/10 border-2 border-yellow-500">
+                      <div className="flex items-center gap-2 text-yellow-500 font-semibold mb-2">
                         <AlertTriangle size={16} />
                         {t('sync.willOverwrite', { count: conflicts.length })}
                       </div>
@@ -513,18 +513,18 @@ export default function Sync() {
                     {sourceSkills.filter(s => selectedSkills.has(s.path)).map(skill => {
                       const conflict = conflicts.find(c => c.skill.path === skill.path)
                       return (
-                        <div key={skill.path} className={`p-3 border-2 ${conflict ? 'border-yellow-400 bg-yellow-50' : 'border-border-light'}`}>
+                        <div key={skill.path} className={`p-3 border-2 ${conflict ? 'border-yellow-500 bg-yellow-500/10' : 'border-border-light'}`}>
                           <div className="flex items-center gap-2">
                             {conflict ? (
-                              <AlertTriangle size={16} className="text-yellow-600" />
+                              <AlertTriangle size={16} className="text-yellow-500" />
                             ) : (
-                              <Check size={16} className="text-green-600" />
+                              <Check size={16} className="text-green-500" />
                             )}
                             <span className="font-semibold">{skill.name}</span>
                           </div>
                           <p className="text-xs text-muted-foreground mt-1 font-mono">{skill.path}</p>
                           {conflict && (
-                            <p className="text-xs text-yellow-600 mt-1">
+                            <p className="text-xs text-yellow-400 mt-1">
                               {t('sync.existsIn')}: {conflict.existsIn.map(getToolName).join(', ')}
                             </p>
                           )}
@@ -625,7 +625,7 @@ export default function Sync() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Only in Tool A */}
               <div className="card p-4">
-                <h3 className="swiss-label mb-3 text-green-600">
+                <h3 className="swiss-label mb-3 text-green-500">
                   {t('sync.onlyIn', { tool: getToolName(sourceTool) })} ({comparison.onlyInSource.length})
                 </h3>
                 <div className="max-h-60 overflow-y-auto space-y-1">
@@ -633,7 +633,7 @@ export default function Sync() {
                     <p className="text-sm text-muted-foreground py-4 text-center">{t('sync.noSkills')}</p>
                   ) : (
                     comparison.onlyInSource.map(skill => (
-                      <div key={skill.path} className="p-2 bg-green-50 text-sm">
+                      <div key={skill.path} className="p-2 bg-green-500/10 text-sm text-foreground">
                         {skill.name}
                       </div>
                     ))
@@ -651,7 +651,7 @@ export default function Sync() {
                     <p className="text-sm text-muted-foreground py-4 text-center">{t('sync.noSkills')}</p>
                   ) : (
                     comparison.inBoth.map(skill => (
-                      <div key={skill.path} className="p-2 bg-secondary text-sm">
+                      <div key={skill.path} className="p-2 bg-secondary text-sm text-foreground">
                         {skill.name}
                       </div>
                     ))
@@ -661,7 +661,7 @@ export default function Sync() {
 
               {/* Only in Tool B */}
               <div className="card p-4">
-                <h3 className="swiss-label mb-3 text-blue-600">
+                <h3 className="swiss-label mb-3 text-blue-500">
                   {t('sync.onlyIn', { tool: getToolName(compareTool) })} ({comparison.onlyInCompare.length})
                 </h3>
                 <div className="max-h-60 overflow-y-auto space-y-1">
@@ -669,7 +669,7 @@ export default function Sync() {
                     <p className="text-sm text-muted-foreground py-4 text-center">{t('sync.noSkills')}</p>
                   ) : (
                     comparison.onlyInCompare.map(skill => (
-                      <div key={skill.path} className="p-2 bg-blue-50 text-sm">
+                      <div key={skill.path} className="p-2 bg-blue-500/10 text-sm text-foreground">
                         {skill.name}
                       </div>
                     ))

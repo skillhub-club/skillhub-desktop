@@ -594,5 +594,20 @@
     "openExternal": "在浏览器中打开",
     "topUp": "充值",
     "topUpDesc": "为您的 SkillHub 钱包充值"
+  },
+  "update": {
+    "checking": "正在检查更新...",
+    "available": "发现新版本",
+    "downloading": "下载中...",
+    "ready": "准备安装",
+    "upToDate": "已是最新版本！",
+    "error": "更新错误",
+    "newVersion": "新版本 {{version}} 可用",
+    "current": "当前",
+    "downloadInstall": "下载并安装",
+    "later": "稍后",
+    "restartPrompt": "更新已下载。重启以应用更改。",
+    "restartNow": "立即重启",
+    "tryAgain": "重试"
   }
 }

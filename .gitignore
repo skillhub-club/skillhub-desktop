@@ -38,3 +38,18 @@ src-tauri/target/
 # Local docs and planning files
 docs/
 NEW_FEATURE*.md
+
+
+# Local tool configs
+.claude/
+.codex/
+.cursor/
+.cline/
+.gemini/
+.opencode/
+.kilocode/
+.copilot/
+.windsurf/
+.config/opencode/
+.roo/
+.zed/

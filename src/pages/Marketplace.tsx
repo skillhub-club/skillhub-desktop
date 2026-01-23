@@ -21,6 +21,7 @@ import {
   detectTools,
   getSkillFilesForVersion,
   installSkill,
+  smartInstallSkillToProject,
   listMarketplaceSkills,
 } from '../api/skillhub'
 import { exchangeCodeForTokens, SKILLHUB_URL } from '../api/auth'
@@ -209,6 +210,7 @@ export default function Marketplace() {
   }
 
   const handleInstall = async () => {
+    if (installing) return
     if (!viewingSkill) return
     if (!skillContent) {
       showToast('Skill content not loaded yet', 'warning')
@@ -232,15 +234,11 @@ export default function Marketplace() {
     setInstalling(true)
     try {
       if (installTarget === 'project' && projectPath) {
-        const { invoke } = await import('@tauri-apps/api/core')
-        for (const toolId of selectedToolIds) {
-          await invoke('install_skill_to_project', {
-            skill_content: skillContent,
-            skill_name: safeName,
-            project_path: projectPath,
-            tool_id: toolId,
-          })
-        }
+        await smartInstallSkillToProject(
+          { ...toSkillCardSkill(viewingSkill), skill_md_raw: skillContent },
+          projectPath,
+          selectedToolIds
+        )
         showToast(`Installed "${viewingSkill.name}" to project`, 'success')
       } else {
         await installSkill(skillContent, safeName, selectedToolIds)

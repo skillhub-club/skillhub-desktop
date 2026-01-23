@@ -84,6 +84,17 @@ async fn install_skill_to_project(
     tools::install_skill_to_project(&skill_content, &skill_name, &project_path, &tool_id).await
 }
 
+// Install multiple files for a skill to a specific project directory
+#[tauri::command]
+async fn install_skill_files_to_project(
+    files: Vec<(String, String)>,
+    skill_name: String,
+    project_path: String,
+    tool_id: String,
+) -> Result<String, String> {
+    tools::install_skill_files_to_project(&files, &skill_name, &project_path, &tool_id).await
+}
+
 // Uninstall a skill from a specific tool
 #[tauri::command]
 async fn uninstall_skill(skill_path: String) -> Result<(), String> {
@@ -517,12 +528,15 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_pty::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             detect_tools,
             get_installed_skills,
             install_skill,
             install_skill_files,
             install_skill_to_project,
+            install_skill_files_to_project,
             uninstall_skill,
             read_skill_content,
             search_skills,
