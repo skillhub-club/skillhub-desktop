@@ -63,6 +63,13 @@ interface AppState {
   setCurrentCategory: (category: string) => void
   currentSortBy: string
   setCurrentSortBy: (sortBy: string) => void
+  discoverPage: number
+  setDiscoverPage: (page: number) => void
+  discoverTotalPages: number
+  setDiscoverTotalPages: (total: number) => void
+  discoverLastCategory: string
+  discoverLastSortBy: string
+  setDiscoverLastParams: (category: string, sortBy: string) => void
 
   // UI state
   isLoading: boolean
@@ -154,6 +161,16 @@ export const useAppStore = create<AppState>()(
       setCurrentCategory: (category) => set({ currentCategory: category }),
       currentSortBy: 'popular',
       setCurrentSortBy: (sortBy) => set({ currentSortBy: sortBy }),
+      discoverPage: 1,
+      setDiscoverPage: (page) => set({ discoverPage: page }),
+      discoverTotalPages: 1,
+      setDiscoverTotalPages: (total) => set({ discoverTotalPages: total }),
+      discoverLastCategory: 'all',
+      discoverLastSortBy: 'popular',
+      setDiscoverLastParams: (category, sortBy) => set({
+        discoverLastCategory: category,
+        discoverLastSortBy: sortBy,
+      }),
 
       // UI state
       isLoading: false,
@@ -182,6 +199,10 @@ export const useAppStore = create<AppState>()(
         selectedToolIds: state.selectedToolIds,
         currentCategory: state.currentCategory,
         currentSortBy: state.currentSortBy,
+        discoverPage: state.discoverPage,
+        discoverTotalPages: state.discoverTotalPages,
+        discoverLastCategory: state.discoverLastCategory,
+        discoverLastSortBy: state.discoverLastSortBy,
         installTarget: state.installTarget,
         projectPath: state.projectPath,
       }),

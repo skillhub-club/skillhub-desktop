@@ -287,7 +287,7 @@ export async function fetchGitHubDirectory(
   branch = 'main',
   basePath?: string
 ): Promise<GitHubFile[]> {
-  const rootPath = basePath || path
+  const rootPath = basePath !== undefined ? basePath : path
   const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
   
   try {
@@ -342,9 +342,22 @@ export async function fetchSkillFilesFromGitHub(
   if (!parsed) return []
 
   // Use skillPath from argument, or from URL hash, or empty string
-  const path = skillPath || parsed.skillPath || ''
+  const rawPath = skillPath || parsed.skillPath || ''
+  const path = rawPath.replace(/^\/+/, '')
+  const fallbackPath = path && !path.includes('/') && path.startsWith('skills-')
+    ? `skills/${path.replace(/^skills-/, '')}`
+    : ''
+
   console.log('[fetchSkillFilesFromGitHub] Fetching from:', parsed.owner, parsed.repo, path)
-  return fetchGitHubDirectory(parsed.owner, parsed.repo, path)
+  const files = await fetchGitHubDirectory(parsed.owner, parsed.repo, path)
+  if (files.length > 0) return files
+
+  if (fallbackPath) {
+    console.log('[fetchSkillFilesFromGitHub] Fallback path:', fallbackPath)
+    return fetchGitHubDirectory(parsed.owner, parsed.repo, fallbackPath)
+  }
+
+  return []
 }
 
 // Fetch skill content (SKILL.md) for installation
@@ -362,6 +375,17 @@ export async function installSkillFiles(
   // Convert GitHubFile[] to [path, content][] for Rust
   const filesTuples: [string, string][] = files.map(f => [f.path, f.content])
   return invoke('install_skill_files', { files: filesTuples, skillName, toolIds })
+}
+
+// Install multiple files for a skill to a specific project directory
+export async function installSkillFilesToProject(
+  files: GitHubFile[],
+  skillName: string,
+  projectPath: string,
+  toolId: string
+): Promise<string> {
+  const filesTuples: [string, string][] = files.map(f => [f.path, f.content])
+  return invoke('install_skill_files_to_project', { files: filesTuples, skillName, projectPath, toolId })
 }
 
 // Smart install that uses GitHub direct download for multi-file skills
@@ -407,8 +431,10 @@ export async function smartInstallSkill(
         await installSkillFiles(normalizedFiles, folderName, toolIds)
         return
       }
+      throw new Error('GitHub repo returned no files')
     } catch (error) {
       console.error('[smartInstallSkill] GitHub fetch failed:', error)
+      throw error instanceof Error ? error : new Error('GitHub fetch failed')
     }
   }
 
@@ -424,6 +450,70 @@ export async function smartInstallSkill(
   
   if (skillMdRaw) {
     await installSkill(skillMdRaw, folderName, toolIds)
+    return
+  }
+
+  throw new Error('No skill content available')
+}
+
+// Smart install to project directory (multi-file supported)
+export async function smartInstallSkillToProject(
+  skill: { 
+    name: string
+    slug: string
+    repo_url?: string
+    skill_path?: string | null
+    skill_md_raw?: string 
+  },
+  projectPath: string,
+  toolIds: string[]
+): Promise<void> {
+  const folderName = skill.name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim() || skill.slug.split('-').slice(-1)[0] || 'skill'
+
+  if (skill.repo_url) {
+    try {
+      const files = await fetchSkillFilesFromGitHub(skill.repo_url, skill.skill_path)
+      if (files.length > 0) {
+        const normalizedFiles = files.map(f => {
+          let path = f.path
+          if (path.toLowerCase() === 'skill.md') {
+            path = 'SKILL.md'
+          }
+          return { path, content: f.content }
+        })
+
+        for (const toolId of toolIds) {
+          await installSkillFilesToProject(normalizedFiles, folderName, projectPath, toolId)
+        }
+        return
+      }
+      throw new Error('GitHub repo returned no files')
+    } catch (error) {
+      console.error('[smartInstallSkillToProject] GitHub fetch failed:', error)
+      throw error instanceof Error ? error : new Error('GitHub fetch failed')
+    }
+  }
+
+  let skillMdRaw = skill.skill_md_raw
+  if (!skillMdRaw) {
+    const fullSkill = await getSkillDetail(skill.slug)
+    skillMdRaw = fullSkill.skill_md_raw
+  }
+
+  if (skillMdRaw) {
+    for (const toolId of toolIds) {
+      await invoke('install_skill_to_project', {
+        skillContent: skillMdRaw,
+        skillName: folderName,
+        projectPath,
+        toolId,
+      })
+    }
     return
   }
 

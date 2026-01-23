@@ -52,6 +52,11 @@ interface CategoryCounts {
   plugins: number
 }
 
+interface ProjectCountsResult {
+  counts: CategoryCounts
+  hasToolConfig: boolean
+}
+
 interface ProjectInfo {
   path: string
   name: string
@@ -119,6 +124,29 @@ export default function Installed() {
     }
   }, [selectedTool, selectedToolData])
 
+  useEffect(() => {
+    if (!selectedProject) return
+    let cancelled = false
+    loadProjectCounts(selectedProject)
+      .then((result) => {
+        if (cancelled) return
+        setProjects((prev) => {
+          const updated = prev.map(p =>
+            p.path === selectedProject.path && p.toolId === selectedProject.toolId
+              ? { ...p, counts: result.counts, hasToolConfig: result.hasToolConfig }
+              : p
+          )
+          localStorage.setItem('skillhub_projects', JSON.stringify(updated))
+          return updated
+        })
+        setSelectedProject({ ...selectedProject, counts: result.counts, hasToolConfig: result.hasToolConfig })
+      })
+      .catch(() => null)
+    return () => {
+      cancelled = true
+    }
+  }, [selectedProject])
+
   const loadCategoryCounts = async () => {
     if (!selectedToolData) return
     
@@ -128,8 +156,13 @@ export default function Installed() {
     for (const cat of CATEGORIES) {
       const path = `${basePath}/${cat.folder}`
       try {
-        const tree = await invoke<{ children?: unknown[] }>('get_folder_tree', { path, maxDepth: 1 })
-        counts[cat.type] = tree?.children?.length || 0
+        const exists = await invoke<boolean>('check_path_exists', { path }).catch(() => false)
+        if (exists) {
+          const tree = await invoke<{ children?: unknown[] }>('get_folder_tree', { path, maxDepth: 1 })
+          counts[cat.type] = tree?.children?.length || 0
+        } else {
+          counts[cat.type] = 0
+        }
       } catch {
         counts[cat.type] = 0
       }
@@ -138,22 +171,32 @@ export default function Installed() {
     setCategoryCounts(counts)
   }
 
-  const loadProjectCounts = async (project: ProjectInfo): Promise<CategoryCounts> => {
+  const loadProjectCounts = async (project: ProjectInfo): Promise<ProjectCountsResult> => {
     const configFolder = TOOL_CONFIG_FOLDERS[selectedTool] || `.${selectedTool}`
     const basePath = `${project.path}/${configFolder}`
     const counts: CategoryCounts = { skills: 0, prompts: 0, commands: 0, plugins: 0 }
     
+    const hasToolConfig = await invoke<boolean>('check_path_exists', { path: basePath }).catch(() => false)
+    if (!hasToolConfig) {
+      return { counts, hasToolConfig }
+    }
+
     for (const cat of CATEGORIES) {
       const path = `${basePath}/${cat.folder}`
       try {
-        const tree = await invoke<{ children?: unknown[] }>('get_folder_tree', { path, maxDepth: 1 })
-        counts[cat.type] = tree?.children?.length || 0
+        const exists = await invoke<boolean>('check_path_exists', { path }).catch(() => false)
+        if (exists) {
+          const tree = await invoke<{ children?: unknown[] }>('get_folder_tree', { path, maxDepth: 1 })
+          counts[cat.type] = tree?.children?.length || 0
+        } else {
+          counts[cat.type] = 0
+        }
       } catch {
         counts[cat.type] = 0
       }
     }
     
-    return counts
+    return { counts, hasToolConfig }
   }
 
   const handleRefreshTools = async () => {
@@ -177,8 +220,8 @@ export default function Installed() {
     const updatedProjects = await Promise.all(
       projects.map(async (p) => {
         if (p.toolId === selectedTool) {
-          const counts = await loadProjectCounts(p)
-          return { ...p, counts }
+          const result = await loadProjectCounts(p)
+          return { ...p, counts: result.counts, hasToolConfig: result.hasToolConfig }
         }
         return p
       })
@@ -217,7 +260,9 @@ export default function Installed() {
         
         // Load counts if config exists
         if (hasToolConfig) {
-          newProject.counts = await loadProjectCounts(newProject)
+          const result = await loadProjectCounts(newProject)
+          newProject.counts = result.counts
+          newProject.hasToolConfig = result.hasToolConfig
         }
         
         const newProjects = [...projects, newProject]
@@ -616,15 +661,15 @@ export default function Installed() {
             showToast('Skills imported successfully', 'success')
             // Refresh counts
             if (selectedProject) {
-              const counts = await loadProjectCounts(selectedProject)
+              const result = await loadProjectCounts(selectedProject)
               const updated = projects.map(p =>
                 p.path === selectedProject.path && p.toolId === selectedProject.toolId
-                  ? { ...p, counts }
+                  ? { ...p, counts: result.counts, hasToolConfig: result.hasToolConfig }
                   : p
               )
               setProjects(updated)
               localStorage.setItem('skillhub_projects', JSON.stringify(updated))
-              setSelectedProject({ ...selectedProject, counts })
+              setSelectedProject({ ...selectedProject, counts: result.counts, hasToolConfig: result.hasToolConfig })
             }
             setImportModalOpen(false)
           }}

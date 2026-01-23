@@ -492,11 +492,10 @@ pub async fn install_skill_to_project(
 
     // Build the project skills directory path
     // e.g., /path/to/project/.claude/skills/skill-name/SKILL.md
-    let config_folder = tool.config_paths[0].trim_start_matches('.');
     let skills_dir = if tool.primary_subpath == "." {
-        project_dir.join(config_folder)
+        project_dir.join(tool.config_paths[0])
     } else {
-        project_dir.join(config_folder).join(tool.primary_subpath)
+        project_dir.join(tool.config_paths[0]).join(tool.primary_subpath)
     };
 
     // Create skills directory if it doesn't exist
@@ -517,6 +516,65 @@ pub async fn install_skill_to_project(
         .map_err(|e| format!("Failed to write skill file: {}", e))?;
 
     Ok(skill_file.to_string_lossy().to_string())
+}
+
+pub async fn install_skill_files_to_project(
+    files: &[(String, String)],
+    skill_name: &str,
+    project_path: &str,
+    tool_id: &str,
+) -> Result<String, String> {
+    let project_dir = PathBuf::from(project_path);
+
+    if !project_dir.exists() {
+        return Err(format!("Project directory does not exist: {}", project_path));
+    }
+
+    let tool = SUPPORTED_TOOLS
+        .iter()
+        .find(|t| t.id == tool_id)
+        .ok_or_else(|| format!("Unknown tool: {}", tool_id))?;
+
+    let folder_name = build_folder_name(skill_name);
+
+    // Build the project skills directory path
+    let skills_dir = if tool.primary_subpath == "." {
+        project_dir.join(tool.config_paths[0])
+    } else {
+        project_dir.join(tool.config_paths[0]).join(tool.primary_subpath)
+    };
+
+    // Create skills directory if it doesn't exist
+    if !skills_dir.exists() {
+        fs::create_dir_all(&skills_dir)
+            .await
+            .map_err(|e| format!("Failed to create skills directory: {}", e))?;
+    }
+
+    let skill_dir = skills_dir.join(&folder_name);
+    fs::create_dir_all(&skill_dir)
+        .await
+        .map_err(|e| format!("Failed to create skill directory: {}", e))?;
+
+    // Install each file
+    for (relative_path, content) in files {
+        let file_path = skill_dir.join(relative_path);
+
+        // Create parent directories if needed
+        if let Some(parent) = file_path.parent() {
+            if !parent.exists() {
+                fs::create_dir_all(parent)
+                    .await
+                    .map_err(|e| format!("Failed to create directory: {}", e))?;
+            }
+        }
+
+        fs::write(&file_path, content)
+            .await
+            .map_err(|e| format!("Failed to write file {}: {}", relative_path, e))?;
+    }
+
+    Ok(skill_dir.to_string_lossy().to_string())
 }
 
 pub async fn uninstall_skill(skill_path: &str) -> Result<(), String> {

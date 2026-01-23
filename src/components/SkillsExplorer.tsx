@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { useTranslation } from 'react-i18next'
 import {
   X,
@@ -13,6 +14,8 @@ import {
   ExternalLink,
   User,
   Tag,
+  Trash2,
+  ArrowRightLeft,
 } from 'lucide-react'
 import ToolIcon from './ToolIcon'
 import FilePreview from './FilePreview'
@@ -118,6 +121,8 @@ export default function SkillsExplorer({ tool, onClose, directPath, title }: Ski
   const [loading, setLoading] = useState(true)
   const [selectedNode, setSelectedNode] = useState<FileNode | null>(null)
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
+  const [moving, setMoving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // Skills-related directories for different tools
   const SKILLS_DIRS_MAP: Record<string, string[]> = {
@@ -219,6 +224,44 @@ export default function SkillsExplorer({ tool, onClose, directPath, title }: Ski
     }
   }
 
+  const canModify = !!selectedNode && selectedNode.path !== tree?.path
+
+  const handleDelete = async () => {
+    if (!selectedNode || !canModify || deleting) return
+    if (!window.confirm(`Delete "${selectedNode.name}"?`)) return
+    setDeleting(true)
+    try {
+      await invoke('uninstall_skill', { skillPath: selectedNode.path })
+      setSelectedNode(null)
+      loadTree()
+    } catch (error) {
+      console.error('Failed to delete:', error)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleMove = async () => {
+    if (!selectedNode || !canModify || moving) return
+    setMoving(true)
+    try {
+      const dest = await openDialog({
+        directory: true,
+        multiple: false,
+        title: 'Select destination folder',
+      })
+      if (!dest || typeof dest !== 'string') return
+      await invoke('copy_skill', { sourcePath: selectedNode.path, destDir: dest })
+      await invoke('uninstall_skill', { skillPath: selectedNode.path })
+      setSelectedNode(null)
+      loadTree()
+    } catch (error) {
+      console.error('Failed to move:', error)
+    } finally {
+      setMoving(false)
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div className="bg-background border-2 border-foreground w-[90vw] max-w-5xl h-[80vh] flex flex-col">
@@ -236,6 +279,26 @@ export default function SkillsExplorer({ tool, onClose, directPath, title }: Ski
             </div>
           </div>
           <div className="flex items-center gap-1">
+            {canModify && (
+              <>
+                <button
+                  onClick={handleMove}
+                  disabled={moving || deleting}
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                  title="Move"
+                >
+                  <ArrowRightLeft size={18} />
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={moving || deleting}
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                  title="Delete"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </>
+            )}
             <button
               onClick={openInFinder}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"

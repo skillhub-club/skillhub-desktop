@@ -3,7 +3,7 @@ import { X, Star, Download, ExternalLink, Github, Tag, FileText, Loader2, Folder
 import { open } from '@tauri-apps/plugin-shell'
 import { useTranslation } from 'react-i18next'
 import type { SkillHubSkill, SkillFileNode, SkillFilesResponse } from '../types'
-import { getSkillDetail, installSkill, installSkillFiles, getSkillFiles, getFileContent, buildRawGitHubUrl, type GitHubFile } from '../api/skillhub'
+import { getSkillDetail, installSkill, installSkillFiles, installSkillFilesToProject, smartInstallSkill, smartInstallSkillToProject, getSkillFiles, getFileContent, buildRawGitHubUrl, type GitHubFile } from '../api/skillhub'
 import { useAppStore } from '../store'
 import ToolSelector from './ToolSelector'
 import FilePreview from './FilePreview'
@@ -142,11 +142,12 @@ function FileTreeNode({
 
 export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetailProps) {
   const { i18n } = useTranslation()
-  const { selectedToolIds, showToast } = useAppStore()
+  const { selectedToolIds, installTarget, projectPath, showToast } = useAppStore()
 
   const [skill, setSkill] = useState<SkillHubSkill>(initialSkill)
   const [loading, setLoading] = useState(true)
   const [installing, setInstalling] = useState(false)
+  const [showInstallModal, setShowInstallModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'files' | 'content'>('overview')
   
   // File tree state
@@ -264,18 +265,57 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
   }, [])
 
   const handleInstall = async () => {
+    if (installing) return
     if (selectedToolIds.length === 0) {
       showToast('Please select at least one tool', 'warning')
+      return
+    }
+
+    if (installTarget === 'project' && !projectPath) {
+      showToast('Please select a project folder first', 'warning')
       return
     }
 
     // Check if we have files data and selected files
     const hasFilesSelected = checkedFiles.size > 0 && filesData
 
+    // If we haven't loaded file list yet, default to full repo install
+    if (!filesData && skill.repo_url) {
+      let installSkillData = skill
+      try {
+        if (skill.id) {
+          const data = await getSkillFiles(skill.id)
+          installSkillData = {
+            ...skill,
+            repo_url: data.repo_url || skill.repo_url,
+            skill_path: data.skill_path ?? skill.skill_path,
+          }
+        }
+      } catch {
+        // Use original skill info if file metadata fetch fails
+      }
+      if (installTarget === 'project' && projectPath) {
+        await smartInstallSkillToProject(installSkillData, projectPath, selectedToolIds)
+        showToast(`Installed "${skill.name}" to project`, 'success')
+      } else {
+        await smartInstallSkill(installSkillData, selectedToolIds)
+        showToast(`Installed "${skill.name}" to ${selectedToolIds.length} tool(s)`, 'success')
+      }
+      onClose()
+      return
+    }
+
     if (!hasFilesSelected && !skill.skill_md_raw) {
       showToast('No files selected for installation', 'warning')
       return
     }
+
+    const folderName = skill.name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim() || skill.slug.split('-').slice(-1)[0] || 'skill'
 
     setInstalling(true)
     try {
@@ -303,17 +343,16 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
         }
 
         if (files.length > 0) {
-          // Create folder name from skill name
-          const folderName = skill.name
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .trim() || skill.slug.split('-').slice(-1)[0] || 'skill'
-
-          // Install all files together preserving structure
-          await installSkillFiles(files, folderName, selectedToolIds)
-          showToast(`Installed ${files.length} file(s) to ${selectedToolIds.length} tool(s)`, 'success')
+          if (installTarget === 'project' && projectPath) {
+            for (const toolId of selectedToolIds) {
+              await installSkillFilesToProject(files, folderName, projectPath, toolId)
+            }
+            showToast(`Installed ${files.length} file(s) to project`, 'success')
+          } else {
+            // Install all files together preserving structure
+            await installSkillFiles(files, folderName, selectedToolIds)
+            showToast(`Installed ${files.length} file(s) to ${selectedToolIds.length} tool(s)`, 'success')
+          }
           onClose()
         } else {
           throw new Error('No files were fetched')
@@ -323,8 +362,21 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
         if (!skill.skill_md_raw) {
           throw new Error('No skill content available')
         }
-        await installSkill(skill.skill_md_raw, skill.name, selectedToolIds)
-        showToast(`Installed "${skill.name}" to ${selectedToolIds.length} tool(s)`, 'success')
+        if (installTarget === 'project' && projectPath) {
+          const { invoke } = await import('@tauri-apps/api/core')
+          for (const toolId of selectedToolIds) {
+            await invoke('install_skill_to_project', {
+              skillContent: skill.skill_md_raw,
+              skillName: folderName,
+              projectPath,
+              toolId,
+            })
+          }
+          showToast(`Installed "${skill.name}" to project`, 'success')
+        } else {
+          await installSkill(skill.skill_md_raw, skill.name, selectedToolIds)
+          showToast(`Installed "${skill.name}" to ${selectedToolIds.length} tool(s)`, 'success')
+        }
         onClose()
       }
     } catch (error) {
@@ -574,7 +626,7 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
               Try
             </button>
             <button
-              onClick={handleInstall}
+              onClick={() => setShowInstallModal(true)}
               disabled={installing || selectedToolIds.length === 0}
               className="flex items-center gap-2 px-4 py-2 text-sm bg-foreground text-background font-semibold rounded hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
@@ -593,6 +645,55 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
           </div>
         </div>
       </div>
+
+      {/* Install Modal (reuse outer flow) */}
+      {showInstallModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowInstallModal(false)}
+        >
+          <div
+            className="bg-background border-2 border-foreground w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b-2 border-border-light">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight">INSTALL SKILL</h2>
+                <p className="text-sm text-muted-foreground">{skill.name}</p>
+              </div>
+              <button
+                onClick={() => setShowInstallModal(false)}
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <ToolSelector showInstallTarget />
+            </div>
+
+            <div className="flex gap-3 p-4 border-t-2 border-border-light">
+              <button
+                onClick={() => setShowInstallModal(false)}
+                className="btn btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  await handleInstall()
+                  setShowInstallModal(false)
+                }}
+                disabled={installing || selectedToolIds.length === 0}
+                className="btn btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {installing ? 'Installing...' : 'Install'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Skill Playground Modal */}
       {showPlayground && (
