@@ -311,9 +311,11 @@ export async function fetchGitHubDirectory(
           if (fileRes.ok) {
             const content = await fileRes.text()
             // Get relative path from the root skill folder
-            const relativePath = item.path.startsWith(rootPath + '/')
-              ? item.path.slice(rootPath.length + 1)
-              : item.name
+            const relativePath = rootPath
+              ? item.path.startsWith(rootPath + '/')
+                ? item.path.slice(rootPath.length + 1)
+                : item.name
+              : item.path
             files.push({ path: relativePath, content })
           }
         } catch {

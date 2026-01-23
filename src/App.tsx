@@ -19,6 +19,7 @@ import Marketplace from './pages/Marketplace'
 import Toast from './components/Toast'
 import UserMenu from './components/UserMenu'
 import SearchDialog from './components/SearchDialog'
+import { UpdateChecker } from './components/UpdateChecker'
 
 const getNavItems = (t: (key: string) => string) => [
   { path: '/', icon: Search, label: t('nav.discover') },
@@ -193,6 +194,9 @@ function App() {
         open={showSearchDialog}
         onClose={() => setShowSearchDialog(false)}
       />
+
+      {/* Auto Update Checker */}
+      <UpdateChecker />
     </div>
   )
 }

@@ -594,5 +594,20 @@
     "openExternal": "Open in browser",
     "topUp": "Top Up Wallet",
     "topUpDesc": "Add funds to your SkillHub wallet"
+  },
+  "update": {
+    "checking": "Checking for updates...",
+    "available": "Update Available",
+    "downloading": "Downloading...",
+    "ready": "Ready to Install",
+    "upToDate": "Up to date!",
+    "error": "Update Error",
+    "newVersion": "Version {{version}} is available",
+    "current": "current",
+    "downloadInstall": "Download & Install",
+    "later": "Later",
+    "restartPrompt": "Update downloaded. Restart to apply changes.",
+    "restartNow": "Restart Now",
+    "tryAgain": "Try again"
   }
 }

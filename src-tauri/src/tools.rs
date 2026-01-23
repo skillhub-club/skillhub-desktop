@@ -172,6 +172,35 @@ const SUPPORTED_TOOLS: &[ToolConfig] = &[
     // Note: VS Code uses GitHub Copilot for skills, so no separate vscode entry needed
 ];
 
+fn fnv1a_hash(input: &str) -> u64 {
+    let mut hash: u64 = 14695981039346656037;
+    for b in input.as_bytes() {
+        hash ^= *b as u64;
+        hash = hash.wrapping_mul(1099511628211);
+    }
+    hash
+}
+
+fn build_folder_name(skill_name: &str) -> String {
+    let trimmed = skill_name.trim();
+    if trimmed.is_empty() {
+        return "skill".to_string();
+    }
+
+    let sanitized = trimmed
+        .to_lowercase()
+        .replace(' ', "-")
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect::<String>();
+
+    if !sanitized.is_empty() {
+        return sanitized;
+    }
+
+    format!("skill-{:x}", fnv1a_hash(trimmed))
+}
+
 fn get_home_dir() -> Option<PathBuf> {
     dirs::home_dir()
 }
@@ -402,12 +431,7 @@ pub async fn install_skill_to_tools(
     let mut installed_paths = Vec::new();
 
     // Create a safe folder name from skill name
-    let folder_name = skill_name
-        .to_lowercase()
-        .replace(' ', "-")
-        .chars()
-        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
-        .collect::<String>();
+    let folder_name = build_folder_name(skill_name);
 
     for tool_id in tool_ids {
         let tool = SUPPORTED_TOOLS
@@ -464,12 +488,7 @@ pub async fn install_skill_to_project(
         .ok_or_else(|| format!("Unknown tool: {}", tool_id))?;
 
     // Create a safe folder name from skill name
-    let folder_name = skill_name
-        .to_lowercase()
-        .replace(' ', "-")
-        .chars()
-        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
-        .collect::<String>();
+    let folder_name = build_folder_name(skill_name);
 
     // Build the project skills directory path
     // e.g., /path/to/project/.claude/skills/skill-name/SKILL.md
@@ -532,12 +551,7 @@ pub async fn install_skill_files_to_tools(
     let mut installed_paths = Vec::new();
 
     // Create a safe folder name from skill name
-    let folder_name = skill_name
-        .to_lowercase()
-        .replace(' ', "-")
-        .chars()
-        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
-        .collect::<String>();
+    let folder_name = build_folder_name(skill_name);
 
     for tool_id in tool_ids {
         let tool = SUPPORTED_TOOLS
