@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { X, Download, CheckSquare, Square, Loader2 } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../store'
 import { smartInstallSkill, smartInstallSkillToProject, detectTools } from '../api/skillhub'
 import type { SkillHubSkill } from '../types'
@@ -12,7 +11,6 @@ interface BatchActionBarProps {
 }
 
 export default function BatchActionBar({ skills, onClose }: BatchActionBarProps) {
-  const { t } = useTranslation()
   const {
     selectedSkillIds,
     selectedToolIds,
