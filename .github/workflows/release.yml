@@ -76,7 +76,7 @@ jobs:
         run: |
           if [ -n "$APPLE_CERTIFICATE" ]; then
             echo "Importing Apple certificate..."
-            echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
+            echo -n "$APPLE_CERTIFICATE" | base64 -d > certificate.p12
             security create-keychain -p actions build.keychain
             security default-keychain -s build.keychain
             security unlock-keychain -p actions build.keychain
