@@ -50,5 +50,6 @@ NEW_FEATURE*.md
 .kilocode/
 .copilot/
 .windsurf/
+.config/opencode/
 .roo/
 .zed/
