@@ -10,10 +10,10 @@
   </defs>
   
   <!-- Background -->
-  <rect width="1024" height="1024" rx="256" fill="url(#bg-gradient)" />
+  <rect x="50" y="50" width="924" height="924" rx="230" fill="url(#bg-gradient)" />
   
   <!-- Icon Symbol -->
-  <g transform="translate(512, 512) scale(2)" filter="url(#shadow)">
+  <g transform="translate(512, 512) scale(1.6)" filter="url(#shadow)">
     <!-- Central Hub -->
     <circle cx="0" cy="0" r="40" fill="white" />
     
