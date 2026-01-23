@@ -609,5 +609,19 @@
     "restartPrompt": "更新已下载。重启以应用更改。",
     "restartNow": "立即重启",
     "tryAgain": "重试"
+  },
+  "batch": {
+    "title": "批量安装",
+    "selected": "已选择 {{count}} 个",
+    "selectAll": "全选",
+    "deselectAll": "取消全选",
+    "installAll": "全部安装",
+    "installing": "安装中...",
+    "installCount": "安装 {{count}} 个技能",
+    "skillsToInstall": "将安装的技能：",
+    "selectProjectFirst": "请先选择项目文件夹",
+    "noSkillsSelected": "未选择任何技能",
+    "installSuccess": "成功安装 {{count}} 个技能",
+    "installPartial": "成功 {{success}} 个，失败 {{fail}} 个"
   }
 }

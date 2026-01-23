@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { X, Download, CheckSquare, Square, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../store'
 import { smartInstallSkill, smartInstallSkillToProject, detectTools } from '../api/skillhub'
 import type { SkillHubSkill } from '../types'
@@ -11,6 +12,7 @@ interface BatchActionBarProps {
 }
 
 export default function BatchActionBar({ skills, onClose }: BatchActionBarProps) {
+  const { t } = useTranslation()
   const {
     selectedSkillIds,
     selectedToolIds,
@@ -40,13 +42,13 @@ export default function BatchActionBar({ skills, onClose }: BatchActionBarProps)
     if (installing || selectedToolIds.length === 0) return
 
     if (installTarget === 'project' && !projectPath) {
-      showToast('Please select a project folder first', 'warning')
+      showToast(t('batch.selectProjectFirst'), 'warning')
       return
     }
 
     const selectedSkills = skills.filter(s => selectedSkillIds.includes(s.id))
     if (selectedSkills.length === 0) {
-      showToast('No skills selected', 'warning')
+      showToast(t('batch.noSkillsSelected'), 'warning')
       return
     }
 
@@ -77,9 +79,9 @@ export default function BatchActionBar({ skills, onClose }: BatchActionBarProps)
     }
 
     if (failCount === 0) {
-      showToast(`Installed ${successCount} skill(s) successfully`, 'success')
+      showToast(t('batch.installSuccess', { count: successCount }), 'success')
     } else {
-      showToast(`Installed ${successCount}, failed ${failCount}`, 'warning')
+      showToast(t('batch.installPartial', { success: successCount, fail: failCount }), 'warning')
     }
 
     setInstalling(false)
@@ -100,12 +102,12 @@ export default function BatchActionBar({ skills, onClose }: BatchActionBarProps)
             <button
               onClick={handleSelectAll}
               className="p-1 hover:bg-background/20 rounded transition-colors"
-              title={allSelected ? 'Deselect all' : 'Select all'}
+              title={allSelected ? t('batch.deselectAll') : t('batch.selectAll')}
             >
               {allSelected ? <CheckSquare size={18} /> : <Square size={18} />}
             </button>
             <span className="text-sm font-semibold whitespace-nowrap">
-              {selectedCount} selected
+              {t('batch.selected', { count: selectedCount })}
             </span>
           </div>
 
@@ -121,7 +123,7 @@ export default function BatchActionBar({ skills, onClose }: BatchActionBarProps)
               ) : (
                 <Download size={16} />
               )}
-              {installing ? 'Installing...' : 'Install All'}
+              {installing ? t('batch.installing') : t('batch.installAll')}
             </button>
           </div>
 
@@ -132,7 +134,7 @@ export default function BatchActionBar({ skills, onClose }: BatchActionBarProps)
               onClose()
             }}
             className="p-1.5 hover:bg-background/20 rounded transition-colors ml-1"
-            title="Cancel"
+            title={t('common.cancel')}
           >
             <X size={18} />
           </button>
@@ -151,9 +153,9 @@ export default function BatchActionBar({ skills, onClose }: BatchActionBarProps)
           >
             <div className="flex items-center justify-between p-4 border-b-2 border-border-light">
               <div>
-                <h2 className="text-xl font-bold tracking-tight">BATCH INSTALL</h2>
+                <h2 className="text-xl font-bold tracking-tight">{t('batch.title')}</h2>
                 <p className="text-sm text-muted-foreground">
-                  {selectedCount} skill(s) selected
+                  {t('batch.selected', { count: selectedCount })}
                 </p>
               </div>
               <button
@@ -167,7 +169,7 @@ export default function BatchActionBar({ skills, onClose }: BatchActionBarProps)
             {/* Selected skills preview */}
             <div className="p-4 border-b border-border-light">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                Skills to install:
+                {t('batch.skillsToInstall')}
               </p>
               <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
                 {skills
@@ -192,14 +194,14 @@ export default function BatchActionBar({ skills, onClose }: BatchActionBarProps)
                 onClick={() => setShowInstallModal(false)}
                 className="btn btn-secondary flex-1"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleBatchInstall}
                 disabled={installing || selectedToolIds.length === 0}
                 className="btn btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {installing ? 'Installing...' : `Install ${selectedCount} Skills`}
+                {installing ? t('batch.installing') : t('batch.installCount', { count: selectedCount })}
               </button>
             </div>
           </div>

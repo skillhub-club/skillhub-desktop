@@ -609,5 +609,19 @@
     "restartPrompt": "Update downloaded. Restart to apply changes.",
     "restartNow": "Restart Now",
     "tryAgain": "Try again"
+  },
+  "batch": {
+    "title": "BATCH INSTALL",
+    "selected": "{{count}} selected",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "installAll": "Install All",
+    "installing": "Installing...",
+    "installCount": "Install {{count}} Skills",
+    "skillsToInstall": "Skills to install:",
+    "selectProjectFirst": "Please select a project folder first",
+    "noSkillsSelected": "No skills selected",
+    "installSuccess": "Installed {{count}} skill(s) successfully",
+    "installPartial": "Installed {{success}}, failed {{fail}}"
   }
 }
