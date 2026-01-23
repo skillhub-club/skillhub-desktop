@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import {
-  Sparkles,
+  Glasses,
+  PenLine,
   Upload,
-  UploadCloud,
   Save,
   Eye,
   EyeOff,
@@ -20,9 +20,10 @@ import {
   FilePlus2,
   FileText,
   Trash2,
+  X,
 } from 'lucide-react'
 import MDEditor from '@uiw/react-md-editor'
-import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate'
+import { unzipSync, strFromU8, strToU8 } from 'fflate'
 import { useAppStore } from '../store'
 import { detectTools, installSkill, installSkillFiles, getUploadUrl } from '../api/skillhub'
 import {
@@ -31,6 +32,7 @@ import {
   publishSkill,
 } from '../api/skillhub'
 import AIGenerateDialog from '../components/AIGenerateDialog'
+import AIIterateEditor from '../components/AIIterateEditor'
 import ToolSelector from '../components/ToolSelector'
 import type { SkillVisibility, UserSkillFile } from '../types'
 
@@ -152,11 +154,13 @@ export default function CreateSkill() {
   // UI state
   const [saveTarget, setSaveTarget] = useState<SaveTarget>('local')
   const [showAIDialog, setShowAIDialog] = useState(false)
+  const [showAIIterateEditor, setShowAIIterateEditor] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
   const [showVisibilityDropdown, setShowVisibilityDropdown] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [showInstallModal, setShowInstallModal] = useState(false)
   const [files, setFiles] = useState<SkillFile[]>([createTextFile('SKILL.md', SKILL_TEMPLATE)])
   const [activeFile, setActiveFile] = useState('SKILL.md')
   const [binaryNotice, setBinaryNotice] = useState<string | null>(null)
@@ -478,35 +482,6 @@ export default function CreateSkill() {
     }
   }
 
-  const handleExportZip = () => {
-    if (!hasSkillMd(files)) {
-      showToast('SKILL.md is required before export', 'warning')
-      return
-    }
-    if (totalSize(files) > MAX_PACKAGE_BYTES) {
-      showToast('Package exceeds 30MB limit', 'warning')
-      return
-    }
-    const folderName = slugify(name || 'my-skill')
-    const zipped = zipSync(
-      files.reduce<Record<string, Uint8Array>>((acc, file) => {
-        acc[`${folderName}/${file.path}`] = file.data
-        return acc
-      }, {}),
-      { level: 6 }
-    )
-    const zippedArray: Uint8Array = zipped instanceof Uint8Array ? new Uint8Array(zipped) : new Uint8Array(zipped)
-    const zippedBuffer = new ArrayBuffer(zippedArray.byteLength)
-    new Uint8Array(zippedBuffer).set(zippedArray)
-    const blob = new Blob([zippedBuffer], { type: 'application/zip' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${folderName}.zip`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
   const onZipInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) handleImportZip(file)
@@ -524,7 +499,7 @@ export default function CreateSkill() {
               Write a new skill and save locally or upload to SkillHub Cloud
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <input
               ref={importInputRef}
               type="file"
@@ -532,33 +507,51 @@ export default function CreateSkill() {
               className="hidden"
               onChange={onZipInputChange}
             />
+            
+            {/* Import - for editing existing skill packages */}
             <button
               onClick={() => importInputRef.current?.click()}
-              className="flex items-center gap-2 px-3 py-2 border rounded-lg text-foreground hover:border-foreground"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg border border-border-light transition-colors group relative"
+              title="Import an existing skill package (.zip)"
             >
-              <FolderArchive size={16} />
-              Import Zip
+              <FolderArchive size={14} />
+              Import .zip
+              {/* Tooltip */}
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded shadow-lg border border-border whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
+                Import existing skill package to edit
+              </span>
             </button>
-            <button
-              onClick={handleExportZip}
-              className="flex items-center gap-2 px-3 py-2 border rounded-lg text-foreground hover:border-foreground"
-            >
-              <UploadCloud size={16} />
-              Export Claude Zip
-            </button>
+
+            {/* Divider */}
+            <div className="w-px h-6 bg-border-light mx-1" />
+
+            {/* AI actions */}
             <button
               onClick={() => setShowAIDialog(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              <Sparkles size={16} />
+              <Glasses size={16} />
               AI Generate
             </button>
             <button
+              onClick={() => setShowAIIterateEditor(true)}
+              disabled={!hasSkillMd(files)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <PenLine size={16} />
+              AI Edit
+            </button>
+
+            {/* Divider */}
+            <div className="w-px h-6 bg-border-light mx-1" />
+
+            {/* Preview toggle */}
+            <button
               onClick={() => setShowPreview(!showPreview)}
-              className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                 showPreview
-                  ? 'border-foreground bg-foreground text-background'
-                  : 'border-border hover:border-foreground text-foreground'
+                  ? 'bg-foreground text-background'
+                  : 'bg-muted/50 text-foreground hover:bg-muted'
               }`}
             >
               {showPreview ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -850,7 +843,13 @@ export default function CreateSkill() {
 
             {/* Save Button */}
             <button
-              onClick={handleSave}
+              onClick={() => {
+                if (saveTarget === 'local') {
+                  setShowInstallModal(true)
+                } else {
+                  handleSave()
+                }
+              }}
               disabled={saving || (saveTarget === 'cloud' && !isAuthenticated)}
               className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
                 saveSuccess
@@ -881,6 +880,55 @@ export default function CreateSkill() {
         </div>
       </div>
 
+      {/* Install Modal */}
+      {showInstallModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowInstallModal(false)}
+        >
+          <div
+            className="bg-background border-2 border-foreground w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b-2 border-border-light">
+              <div>
+                <h2 className="text-xl font-bold tracking-tight">INSTALL SKILL</h2>
+                <p className="text-sm text-muted-foreground">{name || 'New Skill'}</p>
+              </div>
+              <button
+                onClick={() => setShowInstallModal(false)}
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <ToolSelector showInstallTarget />
+            </div>
+
+            <div className="flex gap-3 p-4 border-t-2 border-border-light">
+              <button
+                onClick={() => setShowInstallModal(false)}
+                className="flex-1 px-4 py-2 border-2 border-border text-foreground font-medium rounded hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setShowInstallModal(false)
+                  await handleSave()
+                }}
+                disabled={saving || selectedToolIds.length === 0}
+                className="flex-1 px-4 py-2 bg-foreground text-background font-medium rounded hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {saving ? 'Installing...' : 'Install'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* AI Generate Dialog */}
       <AIGenerateDialog
         open={showAIDialog}
@@ -888,6 +936,24 @@ export default function CreateSkill() {
         onApply={handleAIApply}
         category={category}
       />
+
+      {/* AI Iterate Editor */}
+      {showAIIterateEditor && (
+        <AIIterateEditor
+          content={files.find(f => f.path.toLowerCase() === 'skill.md')?.text || ''}
+          onApply={(newContent) => {
+            setFiles(prev => {
+              const updated = prev.map(f => 
+                f.path.toLowerCase() === 'skill.md'
+                  ? createTextFile(f.path, newContent)
+                  : f
+              )
+              return updated
+            })
+          }}
+          onClose={() => setShowAIIterateEditor(false)}
+        />
+      )}
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Loader2, ExternalLink, ChevronDown, ArrowUpDown, X, Users, Star } from 'lucide-react'
+import { Search, Loader2, ExternalLink, ChevronDown, ArrowUpDown, X, Users, Star, CheckSquare, LayoutGrid, List } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
 import { useAppStore } from '../store'
 import { searchSkills, getCatalog, smartInstallSkill, smartInstallSkillToProject, detectTools, getKolList, type KolUser } from '../api/skillhub'
@@ -7,6 +7,7 @@ import SkillCard from '../components/SkillCard'
 import SkillDetail from '../components/SkillDetail'
 import KolDetail from '../components/KolDetail'
 import ToolSelector from '../components/ToolSelector'
+import BatchActionBar from '../components/BatchActionBar'
 import type { SkillHubSkill } from '../types'
 
 
@@ -59,6 +60,12 @@ export default function Discover() {
     isLoading,
     setIsLoading,
     showToast,
+    // Multi-select
+    selectedSkillIds,
+    selectionMode,
+    toggleSkillSelection,
+    setSelectionMode,
+    clearSkillSelection,
   } = useAppStore()
 
   const [showInstallModal, setShowInstallModal] = useState(false)
@@ -74,8 +81,16 @@ export default function Discover() {
   const [kolLoading, setKolLoading] = useState(false)
   const [viewingKol, setViewingKol] = useState<KolUser | null>(null)
 
+  // View mode state - default to list for better scannability
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
+
   // Get installed tools for quick install
   const installedTools = tools.filter(t => t.installed)
+
+  // Handle skill selection in multi-select mode
+  const handleSkillSelect = (skill: SkillHubSkill) => {
+    toggleSkillSelection(skill.id)
+  }
 
   // Load catalog on mount and category/sort change
   useEffect(() => {
@@ -277,26 +292,77 @@ export default function Discover() {
             ))}
           </div>
           
-          {/* Sort */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-              <ArrowUpDown size={14} />
-              Sort by:
-            </span>
-            <div className="flex gap-2">
-              {SORT_OPTIONS.map(option => (
+          {/* Sort + View Controls */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                <ArrowUpDown size={14} />
+                Sort by:
+              </span>
+              <div className="flex gap-2">
+                {SORT_OPTIONS.map(option => (
+                  <button
+                    key={option.id}
+                    onClick={() => setCurrentSortBy(option.id)}
+                    className={`px-3 py-1 text-xs font-semibold uppercase tracking-wider transition-all border ${
+                      currentSortBy === option.id
+                        ? 'bg-foreground text-background border-foreground'
+                        : 'bg-background text-muted-foreground border-border-light hover:border-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* View Mode & Selection Controls */}
+            <div className="flex items-center gap-2">
+              {/* Multi-select toggle */}
+              <button
+                onClick={() => {
+                  if (selectionMode) {
+                    clearSkillSelection()
+                  } else {
+                    setSelectionMode(true)
+                  }
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all border ${
+                  selectionMode
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'bg-background text-muted-foreground border-border-light hover:border-foreground hover:text-foreground'
+                }`}
+                title={selectionMode ? 'Exit selection mode' : 'Enter selection mode'}
+              >
+                <CheckSquare size={14} />
+                Select
+              </button>
+
+              {/* View mode toggle */}
+              <div className="flex border border-border-light">
                 <button
-                  key={option.id}
-                  onClick={() => setCurrentSortBy(option.id)}
-                  className={`px-3 py-1 text-xs font-semibold uppercase tracking-wider transition-all border ${
-                    currentSortBy === option.id
-                      ? 'bg-foreground text-background border-foreground'
-                      : 'bg-background text-muted-foreground border-border-light hover:border-foreground hover:text-foreground'
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 transition-colors ${
+                    viewMode === 'grid'
+                      ? 'bg-foreground text-background'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
+                  title="Grid view"
                 >
-                  {option.label}
+                  <LayoutGrid size={16} />
                 </button>
-              ))}
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-1.5 transition-colors ${
+                    viewMode === 'list'
+                      ? 'bg-foreground text-background'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  title="List view"
+                >
+                  <List size={16} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -381,17 +447,101 @@ export default function Discover() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {displayedSkills.map(skill => (
-                <SkillCard
-                  key={skill.id}
-                  skill={skill}
-                  onInstall={handleInstallClick}
-                  onView={setViewingSkill}
-                  installing={installing && selectedSkill?.id === skill.id}
-                />
-              ))}
-            </div>
+            {/* Grid View */}
+            {viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {displayedSkills.map(skill => (
+                  <SkillCard
+                    key={skill.id}
+                    skill={skill}
+                    onInstall={handleInstallClick}
+                    onView={setViewingSkill}
+                    installing={installing && selectedSkill?.id === skill.id}
+                    selectionMode={selectionMode}
+                    selected={selectedSkillIds.includes(skill.id)}
+                    onSelect={handleSkillSelect}
+                  />
+                ))}
+              </div>
+            ) : (
+              /* List View */
+              <div className="space-y-2">
+                {displayedSkills.map(skill => (
+                  <div
+                    key={skill.id}
+                    className={`flex items-center gap-4 p-4 border-2 transition-all cursor-pointer ${
+                      selectedSkillIds.includes(skill.id)
+                        ? 'border-foreground bg-secondary/50'
+                        : 'border-border-light hover:border-foreground'
+                    }`}
+                    onClick={() => {
+                      if (selectionMode) {
+                        handleSkillSelect(skill)
+                      } else {
+                        setViewingSkill(skill)
+                      }
+                    }}
+                  >
+                    {/* Selection checkbox in list view */}
+                    {selectionMode && (
+                      <div
+                        className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 ${
+                          selectedSkillIds.includes(skill.id)
+                            ? 'bg-foreground text-background'
+                            : 'border-2 border-muted-foreground'
+                        }`}
+                      >
+                        {selectedSkillIds.includes(skill.id) && (
+                          <CheckSquare size={14} />
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Skill info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-bold text-foreground truncate">{skill.name}</h3>
+                        {skill.simple_rating && (
+                          <span className={`px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                            skill.simple_rating === 'S' ? 'bg-yellow-500 text-black' :
+                            skill.simple_rating === 'A' ? 'bg-purple-500 text-white' :
+                            'bg-blue-500 text-white'
+                          }`}>
+                            {skill.simple_rating}
+                          </span>
+                        )}
+                        <span className="text-xs text-muted-foreground">by {skill.author}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">{skill.description}</p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {skill.github_stars !== undefined && skill.github_stars > 0 && (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Star size={12} className="text-yellow-500" />
+                          {skill.github_stars.toLocaleString()}
+                        </span>
+                      )}
+                      <span className="px-2 py-0.5 text-xs bg-secondary text-muted-foreground">
+                        {skill.category}
+                      </span>
+                      {!selectionMode && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleInstallClick(skill)
+                          }}
+                          className="px-3 py-1 text-xs font-semibold uppercase bg-foreground text-background hover:opacity-90 transition-colors"
+                        >
+                          Install
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Load More / View on Website */}
             <div className="mt-8 text-center space-y-4">
@@ -503,6 +653,17 @@ export default function Discover() {
           onViewSkill={(skill) => {
             setViewingKol(null)
             setViewingSkill(skill)
+          }}
+        />
+      )}
+
+      {/* Batch Action Bar */}
+      {selectionMode && selectedSkillIds.length > 0 && (
+        <BatchActionBar
+          skills={displayedSkills}
+          onClose={() => {
+            clearSkillSelection()
+            setSelectionMode(false)
           }}
         />
       )}

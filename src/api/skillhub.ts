@@ -578,7 +578,8 @@ export interface TrackGenerationRequest {
 export async function generateSkill(
   accessToken: string,
   request: GenerateSkillRequest,
-  onEvent: (event: GenerateSkillEvent) => void
+  onEvent: (event: GenerateSkillEvent) => void,
+  signal?: AbortSignal
 ): Promise<void> {
   const baseUrl = getApiBaseUrl()
   const response = await fetch(`${baseUrl}/api/v1/desktop/generate-skill`, {
@@ -588,6 +589,7 @@ export async function generateSkill(
       'Authorization': `Bearer ${accessToken}`,
     },
     body: JSON.stringify(request),
+    signal,
   })
 
   if (!response.ok) {

@@ -56,6 +56,14 @@ interface AppState {
   searchResults: SkillHubSkill[]
   setSearchResults: (results: SkillHubSkill[]) => void
 
+  // Multi-select for batch operations
+  selectedSkillIds: string[]
+  selectionMode: boolean
+  toggleSkillSelection: (skillId: string) => void
+  selectAllSkills: (skillIds: string[]) => void
+  clearSkillSelection: () => void
+  setSelectionMode: (mode: boolean) => void
+
   // Catalog
   catalogSkills: SkillHubSkill[]
   setCatalogSkills: (skills: SkillHubSkill[]) => void
@@ -153,6 +161,18 @@ export const useAppStore = create<AppState>()(
       setSearchQuery: (query) => set({ searchQuery: query }),
       searchResults: [],
       setSearchResults: (results) => set({ searchResults: results }),
+
+      // Multi-select for batch operations
+      selectedSkillIds: [],
+      selectionMode: false,
+      toggleSkillSelection: (skillId) => set((state) => ({
+        selectedSkillIds: state.selectedSkillIds.includes(skillId)
+          ? state.selectedSkillIds.filter(id => id !== skillId)
+          : [...state.selectedSkillIds, skillId]
+      })),
+      selectAllSkills: (skillIds) => set({ selectedSkillIds: skillIds }),
+      clearSkillSelection: () => set({ selectedSkillIds: [], selectionMode: false }),
+      setSelectionMode: (mode) => set({ selectionMode: mode, selectedSkillIds: mode ? [] : [] }),
 
       // Catalog
       catalogSkills: [],

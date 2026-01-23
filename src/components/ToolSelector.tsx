@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, FolderOpen, Home, ChevronRight } from 'lucide-react'
+import { Check, FolderOpen, Home, ChevronRight, Info } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../store'
@@ -8,6 +8,34 @@ interface ToolSelectorProps {
   onSelectionChange?: (selectedIds: string[]) => void
   compact?: boolean
   showInstallTarget?: boolean
+}
+
+// Tool descriptions for user reference
+const TOOL_INFO: Record<string, { desc: string; url: string }> = {
+  'claude-code': {
+    desc: 'Anthropic official CLI agent for coding tasks',
+    url: 'https://docs.anthropic.com/en/docs/agents-and-tools/claude-code',
+  },
+  'cursor': {
+    desc: 'AI-first code editor with built-in assistant',
+    url: 'https://cursor.com',
+  },
+  'codex': {
+    desc: 'OpenAI Codex CLI for code generation',
+    url: 'https://github.com/openai/codex',
+  },
+  'opencode': {
+    desc: 'Open-source AI coding assistant',
+    url: 'https://github.com/opencode-ai/opencode',
+  },
+  'gemini-cli': {
+    desc: 'Google Gemini CLI for AI tasks',
+    url: 'https://github.com/google-gemini/gemini-cli',
+  },
+  'windsurf': {
+    desc: 'Codeium AI-powered IDE',
+    url: 'https://codeium.com/windsurf',
+  },
 }
 
 export default function ToolSelector({ onSelectionChange, compact = false, showInstallTarget = false }: ToolSelectorProps) {
@@ -43,29 +71,55 @@ export default function ToolSelector({ onSelectionChange, compact = false, showI
     )
   }
 
-  // Compact horizontal layout
+  // Compact horizontal layout with better contrast and info
   if (compact) {
     return (
-      <div className="flex flex-wrap gap-2">
-        {installedTools.map(tool => (
-          <label
-            key={tool.id}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 border cursor-pointer transition-all text-sm ${
-              selectedToolIds.includes(tool.id)
-                ? 'border-foreground bg-foreground text-background'
-                : 'border-border hover:border-foreground text-foreground'
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={selectedToolIds.includes(tool.id)}
-              onChange={() => handleToggle(tool.id)}
-              className="hidden"
-            />
-            {selectedToolIds.includes(tool.id) && <Check size={12} />}
-            <span className="font-medium">{tool.name}</span>
-          </label>
-        ))}
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {installedTools.map(tool => {
+            const isSelected = selectedToolIds.includes(tool.id)
+            const info = TOOL_INFO[tool.id]
+            return (
+              <div key={tool.id} className="relative group">
+                <label
+                  className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all text-sm ${
+                    isSelected
+                      ? 'bg-foreground text-background shadow-md'
+                      : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleToggle(tool.id)}
+                    className="hidden"
+                  />
+                  {/* Checkbox indicator */}
+                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                    isSelected
+                      ? 'bg-background border-background'
+                      : 'border-current opacity-50'
+                  }`}>
+                    {isSelected && <Check size={10} className="text-foreground" strokeWidth={3} />}
+                  </div>
+                  <span className="font-medium">{tool.name}</span>
+                </label>
+                {/* Tooltip on hover */}
+                {info && (
+                  <div className="absolute bottom-full left-0 mb-2 w-56 p-2.5 bg-popover text-popover-foreground text-xs rounded-lg shadow-lg border border-border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
+                    <p className="font-medium mb-1">{tool.name}</p>
+                    <p className="text-muted-foreground">{info.desc}</p>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+        {/* Info hint */}
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <Info size={12} />
+          Hover over a tool for more info
+        </p>
       </div>
     )
   }

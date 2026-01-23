@@ -1,4 +1,4 @@
-import { Star, Download, ExternalLink, Eye, Loader2, Library } from 'lucide-react'
+import { Star, Download, ExternalLink, Eye, Loader2, Library, CheckCircle2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { open } from '@tauri-apps/plugin-shell'
 import type { SkillHubSkill } from '../types'
@@ -16,6 +16,10 @@ interface SkillCardProps {
     downloads?: number
     ownerName?: string
   }
+  // Multi-select support
+  selectionMode?: boolean
+  selected?: boolean
+  onSelect?: (skill: SkillHubSkill) => void
 }
 
 function getRatingBadge(rating?: string) {
@@ -39,7 +43,18 @@ function getCategoryColor(category?: string) {
   }
 }
 
-export default function SkillCard({ skill, onInstall, onView, installing, showPreviewButton = false, customUrl, meta }: SkillCardProps) {
+export default function SkillCard({ 
+  skill, 
+  onInstall, 
+  onView, 
+  installing, 
+  showPreviewButton = false, 
+  customUrl, 
+  meta,
+  selectionMode = false,
+  selected = false,
+  onSelect,
+}: SkillCardProps) {
   const { i18n } = useTranslation()
   
   // Select description based on current language
@@ -47,11 +62,33 @@ export default function SkillCard({ skill, onInstall, onView, installing, showPr
     ? skill.description_zh 
     : skill.description
 
+  const handleCardClick = () => {
+    if (selectionMode && onSelect) {
+      onSelect(skill)
+    } else {
+      onView?.(skill)
+    }
+  }
+
   return (
     <div
-      className="card p-0 cursor-pointer flex flex-col overflow-hidden"
-      onClick={() => onView?.(skill)}
+      className={`card p-0 cursor-pointer flex flex-col overflow-hidden relative transition-all ${
+        selected ? 'ring-2 ring-foreground ring-offset-2 ring-offset-background' : ''
+      }`}
+      onClick={handleCardClick}
     >
+      {/* Selection indicator */}
+      {selectionMode && (
+        <div 
+          className={`absolute top-3 left-3 z-10 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+            selected 
+              ? 'bg-foreground text-background' 
+              : 'bg-background/80 text-muted-foreground border-2 border-muted-foreground'
+          }`}
+        >
+          {selected && <CheckCircle2 size={16} />}
+        </div>
+      )}
       <div className="relative h-32 w-full overflow-hidden border-b border-border-light bg-secondary">
         {meta?.coverUrl ? (
           <img

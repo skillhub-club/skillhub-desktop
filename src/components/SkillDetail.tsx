@@ -8,6 +8,7 @@ import { useAppStore } from '../store'
 import ToolSelector from './ToolSelector'
 import FilePreview from './FilePreview'
 import SkillPlayground from './SkillPlayground'
+import RelatedSkills from './RelatedSkills'
 
 
 interface SkillDetailProps {
@@ -518,6 +519,29 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
                   <ExternalLink size={12} />
                 </button>
               </div>
+
+              {/* Related Skills */}
+              <RelatedSkills
+                currentSkill={skill}
+                onViewSkill={(relatedSkill) => {
+                  // Update to view the related skill
+                  setSkill(relatedSkill)
+                  setFilesData(null)
+                  setSelectedFilePath(null)
+                  setFileContent('')
+                  setCheckedFiles(new Set())
+                  setActiveTab('overview')
+                  setLoading(true)
+                  getSkillDetail(relatedSkill.slug)
+                    .then(setSkill)
+                    .catch((error) => {
+                      console.error('Failed to load skill details:', error)
+                      showToast('Failed to load skill details', 'error')
+                    })
+                    .finally(() => setLoading(false))
+                }}
+                onInstallSkill={() => setShowInstallModal(true)}
+              />
             </div>
           ) : activeTab === 'files' ? (
             <div className="h-full flex">
