@@ -34,6 +34,9 @@ src-tauri/target/
 *.p12
 *.pfx
 .env.production
+certificates/
+certificate*.txt
+certificate*.p12
 
 # Local docs and planning files
 docs/
@@ -53,3 +56,5 @@ NEW_FEATURE*.md
 .config/opencode/
 .roo/
 .zed/
+
+scripts/

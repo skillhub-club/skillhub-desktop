@@ -103,7 +103,7 @@ function App() {
             <button
               onClick={() => setSidebarCollapsed(false)}
               className="w-full p-3 flex items-center justify-center hover:bg-background transition-colors"
-              title="Expand sidebar"
+              title={t('nav.expandSidebar')}
             >
               <PanelLeft size={20} className="text-foreground" />
             </button>
@@ -122,10 +122,10 @@ function App() {
                 </div>
               </button>
               <button
-                onClick={() => setSidebarCollapsed(true)}
-                className="p-3 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
-                title="Collapse sidebar"
-              >
+              onClick={() => setSidebarCollapsed(true)}
+              className="p-3 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+              title={t('nav.collapseSidebar')}
+            >
                 <PanelLeftClose size={18} />
               </button>
             </div>
@@ -183,7 +183,14 @@ function App() {
 
       {/* Toast */}
       {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={hideToast} />
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          actionLabel={toast.actionLabel}
+          onAction={toast.onAction}
+          duration={toast.duration}
+          onClose={hideToast}
+        />
       )}
       {toastMessage && (
         <Toast message={toastMessage} onClose={() => setToastMessage(null)} />

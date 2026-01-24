@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Search, Loader2, ExternalLink, ChevronDown, ArrowUpDown, X, Users, Star, CheckSquare, LayoutGrid, List } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
+import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../store'
 import { searchSkills, getCatalog, smartInstallSkill, smartInstallSkillToProject, detectTools, getKolList, type KolUser } from '../api/skillhub'
 import SkillCard from '../components/SkillCard'
@@ -14,28 +15,8 @@ import type { SkillHubSkill } from '../types'
 const SKILLHUB_URL = import.meta.env.VITE_SKILLHUB_API_URL || 'https://www.skillhub.club'
 const PAGE_SIZE = 12
 
-const CATEGORIES = [
-  { id: 'all', label: 'All' },
-  { id: 'collections', label: 'Collections' },
-  { id: 'kol', label: 'KOL' },
-  { id: 'development', label: 'Development' },
-  { id: 'devops', label: 'DevOps' },
-  { id: 'testing', label: 'Testing' },
-  { id: 'documentation', label: 'Documentation' },
-  { id: 'ai-ml', label: 'AI/ML' },
-  { id: 'frontend', label: 'Frontend' },
-  { id: 'backend', label: 'Backend' },
-  { id: 'security', label: 'Security' },
-]
-
-const SORT_OPTIONS = [
-  { id: 'popular', label: 'Popular' },
-  { id: 'newest', label: 'Newest' },
-  { id: 'stars', label: 'Most Stars' },
-  { id: 'name', label: 'Name A-Z' },
-]
-
 export default function Discover() {
+  const { t } = useTranslation()
   const {
     searchQuery,
     setSearchQuery,
@@ -67,6 +48,27 @@ export default function Discover() {
     setSelectionMode,
     clearSkillSelection,
   } = useAppStore()
+
+  const CATEGORIES = [
+    { id: 'all', label: t('discover.categories.all') },
+    { id: 'collections', label: t('discover.categories.collections') },
+    { id: 'kol', label: t('discover.categories.kol') },
+    { id: 'development', label: t('discover.categories.development') },
+    { id: 'devops', label: t('discover.categories.devops') },
+    { id: 'testing', label: t('discover.categories.testing') },
+    { id: 'documentation', label: t('discover.categories.documentation') },
+    { id: 'ai-ml', label: t('discover.categories.aiMl') },
+    { id: 'frontend', label: t('discover.categories.frontend') },
+    { id: 'backend', label: t('discover.categories.backend') },
+    { id: 'security', label: t('discover.categories.security') },
+  ]
+
+  const SORT_OPTIONS = [
+    { id: 'popular', label: t('discover.sort.popular') },
+    { id: 'newest', label: t('discover.sort.newest') },
+    { id: 'stars', label: t('discover.sort.stars') },
+    { id: 'name', label: t('discover.sort.nameAz') },
+  ]
 
   const [showInstallModal, setShowInstallModal] = useState(false)
   const [selectedSkill, setSelectedSkill] = useState<SkillHubSkill | null>(null)
@@ -113,7 +115,7 @@ export default function Discover() {
           })
           .catch((error) => {
             console.error('Failed to load KOL list:', error)
-            showToast('Failed to load KOL list', 'error')
+            showToast(t('discover.failedToLoadKols'), 'error')
           })
           .finally(() => setKolLoading(false))
         return
@@ -135,7 +137,7 @@ export default function Discover() {
         })
         .catch((error) => {
           console.error('Failed to load catalog:', error)
-          showToast('Failed to load skills catalog', 'error')
+          showToast(t('discover.failedToLoadCatalog'), 'error')
         })
         .finally(() => setIsLoading(false))
     }
@@ -167,7 +169,7 @@ export default function Discover() {
         .then(setSearchResults)
         .catch((error) => {
           console.error('Search failed:', error)
-          showToast('Search failed. Please try again.', 'error')
+          showToast(t('discover.searchFailed'), 'error')
         })
         .finally(() => setIsLoading(false))
     }, 300)
@@ -189,7 +191,7 @@ export default function Discover() {
       setDiscoverLastParams(currentCategory, currentSortBy)
     } catch (error) {
       console.error('Failed to load more:', error)
-      showToast('Failed to load more skills', 'error')
+      showToast(t('discover.loadMoreFailed'), 'error')
     } finally {
       setLoadingMore(false)
     }
@@ -221,7 +223,7 @@ export default function Discover() {
     
     // Validate project path if installing to project
     if (installTarget === 'project' && !projectPath) {
-      showToast('Please select a project folder first', 'warning')
+      showToast(t('discover.selectProjectFirst'), 'warning')
       return
     }
 
@@ -229,11 +231,11 @@ export default function Discover() {
     try {
       if (installTarget === 'project' && projectPath) {
         await smartInstallSkillToProject(selectedSkill, projectPath, selectedToolIds)
-        showToast(`Installed "${selectedSkill.name}" to project`, 'success')
+        showToast(t('discover.installedToProject', { name: selectedSkill.name }), 'success')
       } else {
         // Install to personal (global) directory using smart install
         await smartInstallSkill(selectedSkill, selectedToolIds)
-        showToast(`Installed "${selectedSkill.name}" to ${selectedToolIds.length} tool(s)`, 'success')
+        showToast(t('discover.installedToTools', { name: selectedSkill.name, count: selectedToolIds.length }), 'success')
       }
 
       // Refresh tools to update counts
@@ -243,7 +245,7 @@ export default function Discover() {
       setShowInstallModal(false)
     } catch (error) {
       console.error('Install failed:', error)
-      showToast('Installation failed. Please try again.', 'error')
+      showToast(t('discover.installFailed'), 'error')
     } finally {
       setInstalling(false)
     }
@@ -256,8 +258,10 @@ export default function Discover() {
     <div className="p-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2 tracking-tight">DISCOVER</h1>
-        <p className="text-muted-foreground">Browse and install AI coding skills from SkillHub</p>
+        <h1 className="text-3xl font-bold text-foreground mb-2 tracking-tight">
+          {t('discover.title').toUpperCase()}
+        </h1>
+        <p className="text-muted-foreground">{t('discover.subtitle')}</p>
       </div>
 
       {/* Search */}
@@ -265,7 +269,7 @@ export default function Discover() {
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
         <input
           type="text"
-          placeholder="Search skills with AI... (e.g., 'React component generator')"
+          placeholder={t('discover.searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="input pl-12"
@@ -297,7 +301,7 @@ export default function Discover() {
             <div className="flex items-center gap-3">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                 <ArrowUpDown size={14} />
-                Sort by:
+                {t('discover.sortBy')}
               </span>
               <div className="flex gap-2">
                 {SORT_OPTIONS.map(option => (
@@ -332,10 +336,10 @@ export default function Discover() {
                     ? 'bg-foreground text-background border-foreground'
                     : 'bg-background text-muted-foreground border-border-light hover:border-foreground hover:text-foreground'
                 }`}
-                title={selectionMode ? 'Exit selection mode' : 'Enter selection mode'}
+                title={selectionMode ? t('discover.exitSelectionMode') : t('discover.enterSelectionMode')}
               >
                 <CheckSquare size={14} />
-                Select
+                {t('discover.select')}
               </button>
 
               {/* View mode toggle */}
@@ -347,7 +351,7 @@ export default function Discover() {
                       ? 'bg-foreground text-background'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
-                  title="Grid view"
+                  title={t('discover.gridView')}
                 >
                   <LayoutGrid size={16} />
                 </button>
@@ -358,7 +362,7 @@ export default function Discover() {
                       ? 'bg-foreground text-background'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
-                  title="List view"
+                  title={t('discover.listView')}
                 >
                   <List size={16} />
                 </button>
@@ -376,7 +380,7 @@ export default function Discover() {
           </div>
         ) : kolList.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
-            No KOLs found
+            {t('discover.noKols')}
           </div>
         ) : (
           <>
@@ -414,7 +418,7 @@ export default function Discover() {
                     </span>
                     <span className="flex items-center gap-1">
                       <Star size={12} />
-                      {kol.skillCount} skills
+                      {t('discover.skillsCount', { count: kol.skillCount })}
                     </span>
                   </div>
                 </div>
@@ -427,10 +431,10 @@ export default function Discover() {
                 className="btn btn-secondary"
               >
                 <ExternalLink size={18} />
-                View all KOLs on SkillHub
+                {t('discover.viewAllKols')}
               </button>
               <p className="mt-4 text-sm text-muted-foreground uppercase tracking-wider">
-                Showing {kolList.length} KOLs
+                {t('discover.kolCount', { count: kolList.length })}
               </p>
             </div>
           </>
@@ -443,7 +447,7 @@ export default function Discover() {
           </div>
         ) : displayedSkills.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
-            {searchQuery ? 'No skills found' : 'No skills available'}
+            {searchQuery ? t('discover.noSkillsFound') : t('discover.noSkillsAvailable')}
           </div>
         ) : (
           <>
@@ -510,7 +514,9 @@ export default function Discover() {
                             {skill.simple_rating}
                           </span>
                         )}
-                        <span className="text-xs text-muted-foreground">by {skill.author}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {t('discover.byAuthor', { name: skill.author })}
+                        </span>
                       </div>
                       <p className="text-sm text-muted-foreground truncate">{skill.description}</p>
                     </div>
@@ -534,7 +540,7 @@ export default function Discover() {
                           }}
                           className="px-3 py-1 text-xs font-semibold uppercase bg-foreground text-background hover:opacity-90 transition-colors"
                         >
-                          Install
+                          {t('discover.install')}
                         </button>
                       )}
                     </div>
@@ -556,7 +562,7 @@ export default function Discover() {
                   ) : (
                     <ChevronDown size={18} />
                   )}
-                  {loadingMore ? 'Loading...' : 'Load More'}
+                  {loadingMore ? t('discover.loading') : t('discover.loadMore')}
                 </button>
               )}
 
@@ -566,16 +572,13 @@ export default function Discover() {
                   className="btn btn-secondary"
                 >
                   <ExternalLink size={18} />
-                  {searchQuery
-                    ? `View all results on SkillHub`
-                    : 'Browse all skills on SkillHub'
-                  }
+                  {searchQuery ? t('discover.viewAllResults') : t('discover.browseAll')}
                 </button>
               </div>
 
               <p className="text-sm text-muted-foreground uppercase tracking-wider">
-                Showing {displayedSkills.length} skills
-                {!searchQuery && discoverTotalPages > 1 && ` (page ${discoverPage} of ${discoverTotalPages})`}
+                {t('discover.showingCount', { count: displayedSkills.length })}
+                {!searchQuery && discoverTotalPages > 1 && ` (${t('discover.pageInfo', { page: discoverPage, total: discoverTotalPages })})`}
               </p>
             </div>
           </>
@@ -595,7 +598,7 @@ export default function Discover() {
             {/* Header with close button */}
             <div className="flex items-center justify-between p-4 border-b-2 border-border-light">
               <div>
-                <h2 className="text-xl font-bold tracking-tight">INSTALL SKILL</h2>
+                <h2 className="text-xl font-bold tracking-tight">{t('discover.installTitle')}</h2>
                 <p className="text-sm text-muted-foreground">
                   {selectedSkill.name}
                 </p>
@@ -619,14 +622,14 @@ export default function Discover() {
                 onClick={() => setShowInstallModal(false)}
                 className="btn btn-secondary flex-1"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleInstall}
                 disabled={installing || selectedToolIds.length === 0}
                 className="btn btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {installing ? 'Installing...' : 'Install'}
+                {installing ? t('discover.installing') : t('discover.install')}
               </button>
             </div>
           </div>

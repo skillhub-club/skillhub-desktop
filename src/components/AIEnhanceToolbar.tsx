@@ -67,14 +67,14 @@ export default function AIEnhanceToolbar({
               break
             case 'error':
               setState('error')
-              setError(event.message || 'Enhancement failed')
+              setError(event.message || t('aiEnhance.failed'))
               break
           }
         }
       )
     } catch (err) {
       setState('error')
-      setError(err instanceof Error ? err.message : 'Enhancement failed')
+      setError(err instanceof Error ? err.message : t('aiEnhance.failed'))
     }
   }
 
@@ -97,7 +97,7 @@ export default function AIEnhanceToolbar({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Sparkles className="text-purple-500" size={16} />
-          <span className="text-sm font-medium text-gray-700">AI Enhance</span>
+          <span className="text-sm font-medium text-gray-700">{t('aiEnhance.title')}</span>
         </div>
         <button
           onClick={onClose}

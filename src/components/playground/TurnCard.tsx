@@ -22,6 +22,7 @@ import {
   Check,
 } from 'lucide-react'
 import { Spinner } from './Spinner'
+import { Button } from '../ui/button'
 
 // ============================================================================
 // Types
@@ -187,11 +188,13 @@ function ResponseCard({ text }: ResponseCardProps) {
 
       {/* Footer */}
       <div className={`px-4 py-2 border-t border-border/30 flex items-center bg-secondary/20 ${SIZE_CONFIG.fontSize}`}>
-        <button
+        <Button
           onClick={handleCopy}
-          className={`flex items-center gap-1.5 transition-colors
-                      ${copied ? 'text-[var(--success)]' : 'text-muted-foreground hover:text-foreground'}
-                      focus:outline-none`}
+          variant="ghost"
+          size="sm"
+          className={`h-auto px-1.5 py-1 transition-colors ${
+            copied ? 'text-[var(--success)]' : 'text-muted-foreground hover:text-foreground'
+          }`}
         >
           {copied ? (
             <>
@@ -204,7 +207,7 @@ function ResponseCard({ text }: ResponseCardProps) {
               <span>{t('turnCard.copy')}</span>
             </>
           )}
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -220,6 +223,7 @@ export function TurnCard({
   response,
   defaultExpanded = false,
 }: TurnCardProps) {
+  const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
 
   // Calculate stats
@@ -234,14 +238,18 @@ export function TurnCard({
   const previewText = useMemo(() => {
     if (isProcessing) {
       const running = activities.find(a => a.status === 'running')
-      if (running) return `${running.title}...`
-      return 'Thinking...'
+      if (running) return t('turnCard.runningTitle', { title: running.title })
+      return t('turnCard.thinkingSummary')
     }
     if (stats.errors > 0) {
-      return `${stats.completed} completed, ${stats.errors} error${stats.errors > 1 ? 's' : ''}`
+      return t('turnCard.completedSummary', {
+        completed: stats.completed,
+        errors: stats.errors,
+        count: stats.errors,
+      })
     }
-    return `${stats.completed} step${stats.completed !== 1 ? 's' : ''} completed`
-  }, [activities, isProcessing, stats])
+    return t('turnCard.stepsCompleted', { count: stats.completed })
+  }, [activities, isProcessing, stats, t])
 
   return (
     <div className="bg-background shadow-minimal rounded-[8px] overflow-hidden">
@@ -276,7 +284,7 @@ export function TurnCard({
 
         {/* Activity count badge */}
         <span className="shrink-0 px-1.5 py-0.5 rounded-[4px] bg-secondary text-[10px] font-medium text-muted-foreground">
-          {stats.total} {stats.total === 1 ? 'step' : 'steps'}
+          {t('turnCard.stepsCount', { count: stats.total })}
         </span>
       </div>
 

@@ -17,7 +17,7 @@ export default function RelatedSkills({
   onInstallSkill,
   maxItems = 4,
 }: RelatedSkillsProps) {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [relatedSkills, setRelatedSkills] = useState<SkillHubSkill[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -84,7 +84,7 @@ export default function RelatedSkills({
     <div className="mt-6 pt-6 border-t border-border">
       <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
         <Sparkles size={14} className="text-purple-500" />
-        Related Skills
+        {t('relatedSkills.title')}
       </h3>
       <div className="grid grid-cols-2 gap-3">
         {relatedSkills.map(skill => {
@@ -117,7 +117,7 @@ export default function RelatedSkills({
               </p>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-muted-foreground">
-                  by {skill.author}
+                  {t('relatedSkills.by', { name: skill.author })}
                 </span>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
@@ -127,7 +127,7 @@ export default function RelatedSkills({
                     }}
                     className="text-[10px] px-2 py-0.5 bg-foreground text-background font-semibold hover:opacity-90 transition-colors"
                   >
-                    Install
+                    {t('relatedSkills.install')}
                   </button>
                   <ChevronRight size={14} className="text-muted-foreground" />
                 </div>

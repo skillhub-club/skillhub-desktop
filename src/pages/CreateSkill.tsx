@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Glasses,
   PenLine,
@@ -37,44 +38,24 @@ import ToolSelector from '../components/ToolSelector'
 import type { SkillVisibility, UserSkillFile } from '../types'
 
 const CATEGORIES = [
-  { id: 'development', label: 'Development' },
-  { id: 'devops', label: 'DevOps' },
-  { id: 'testing', label: 'Testing' },
-  { id: 'documentation', label: 'Documentation' },
-  { id: 'ai-ml', label: 'AI/ML' },
-  { id: 'frontend', label: 'Frontend' },
-  { id: 'backend', label: 'Backend' },
-  { id: 'security', label: 'Security' },
-  { id: 'other', label: 'Other' },
+  { id: 'development', labelKey: 'create.categories.development' },
+  { id: 'devops', labelKey: 'create.categories.devops' },
+  { id: 'testing', labelKey: 'create.categories.testing' },
+  { id: 'documentation', labelKey: 'create.categories.documentation' },
+  { id: 'ai-ml', labelKey: 'create.categories.aiMl' },
+  { id: 'frontend', labelKey: 'create.categories.frontend' },
+  { id: 'backend', labelKey: 'create.categories.backend' },
+  { id: 'security', labelKey: 'create.categories.security' },
+  { id: 'other', labelKey: 'create.categories.other' },
 ]
 
-const VISIBILITY_OPTIONS: { id: SkillVisibility; label: string; icon: React.ReactNode; desc: string }[] = [
-  { id: 'public', label: 'Public', icon: <Globe size={16} />, desc: 'Anyone can discover and use' },
-  { id: 'unlisted', label: 'Unlisted', icon: <Link2 size={16} />, desc: 'Only accessible via link' },
-  { id: 'private', label: 'Private', icon: <Lock size={16} />, desc: 'Only you can access' },
+const VISIBILITY_OPTIONS: { id: SkillVisibility; labelKey: string; icon: React.ReactNode; descKey: string }[] = [
+  { id: 'public', labelKey: 'create.visibility.public.label', icon: <Globe size={16} />, descKey: 'create.visibility.public.desc' },
+  { id: 'unlisted', labelKey: 'create.visibility.unlisted.label', icon: <Link2 size={16} />, descKey: 'create.visibility.unlisted.desc' },
+  { id: 'private', labelKey: 'create.visibility.private.label', icon: <Lock size={16} />, descKey: 'create.visibility.private.desc' },
 ]
 
 type SaveTarget = 'local' | 'cloud'
-
-const SKILL_TEMPLATE = `# Skill Name
-
-Brief description of what this skill does.
-
-## When to Use
-
-- Use case 1
-- Use case 2
-
-## Instructions
-
-Detailed instructions for the AI assistant...
-
-## Examples
-
-\`\`\`
-Example usage or code
-\`\`\`
-`
 
 const MAX_PACKAGE_BYTES = 30 * 1024 * 1024
 
@@ -142,6 +123,9 @@ function totalSize(files: SkillFile[]) {
 
 export default function CreateSkill() {
   const { isAuthenticated, accessToken, tools, setTools, selectedToolIds, showToast, theme } = useAppStore()
+  const { t } = useTranslation()
+  const skillTemplate = t('create.skillTemplate')
+  const maxPackageMb = MAX_PACKAGE_BYTES / (1024 * 1024)
 
   // Form state
   const [name, setName] = useState('')
@@ -161,7 +145,7 @@ export default function CreateSkill() {
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [showInstallModal, setShowInstallModal] = useState(false)
-  const [files, setFiles] = useState<SkillFile[]>([createTextFile('SKILL.md', SKILL_TEMPLATE)])
+  const [files, setFiles] = useState<SkillFile[]>(() => [createTextFile('SKILL.md', skillTemplate)])
   const [activeFile, setActiveFile] = useState('SKILL.md')
   const [binaryNotice, setBinaryNotice] = useState<string | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -213,27 +197,27 @@ export default function CreateSkill() {
   }
 
   const validateForm = (): string | null => {
-    if (!name.trim()) return 'Please enter a skill name'
-    if (!hasSkillMd(files)) return 'SKILL.md is required'
-    if (totalSize(files) > MAX_PACKAGE_BYTES) return 'Package exceeds 30MB limit'
+    if (!name.trim()) return t('create.validation.nameRequired')
+    if (!hasSkillMd(files)) return t('create.validation.skillMdRequired')
+    if (totalSize(files) > MAX_PACKAGE_BYTES) return t('create.validation.packageLimit', { max: maxPackageMb })
     if (saveTarget === 'local' && selectedToolIds.length === 0) {
-      return 'Please select at least one tool to install to'
+      return t('create.validation.selectTool')
     }
     if (saveTarget === 'cloud' && !isAuthenticated) {
-      return 'Please login to upload to cloud'
+      return t('create.validation.loginToUpload')
     }
     return null
   }
 
   const handleSaveLocal = async () => {
     if (selectedToolIds.length === 0) {
-      showToast('Please select at least one tool', 'warning')
+      showToast(t('create.validation.selectToolShort'), 'warning')
       return
     }
 
     const textFiles = files.filter(f => !f.isBinary)
     if (textFiles.length === 0) {
-      showToast('Cannot install: only binary files found. Export Claude zip instead.', 'warning')
+      showToast(t('create.install.binaryOnly'), 'warning')
       return
     }
 
@@ -253,13 +237,13 @@ export default function CreateSkill() {
       }
 
       if (files.some(f => f.isBinary)) {
-        showToast('Installed text files. Binary assets available in Claude zip export.', 'warning')
+        showToast(t('create.install.installedWithBinary'), 'warning')
       } else {
-        showToast(`Skill installed to ${selectedToolIds.length} tool(s)`, 'success')
+        showToast(t('create.install.installedToTools', { count: selectedToolIds.length }), 'success')
       }
       setSaveSuccess(true)
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to install skill', 'error')
+      showToast(error instanceof Error ? error.message : t('create.install.failed'), 'error')
     } finally {
       setSaving(false)
     }
@@ -267,7 +251,7 @@ export default function CreateSkill() {
 
   const handleSaveCloud = async () => {
     if (!isAuthenticated || !accessToken) {
-      showToast('Please login to upload to cloud', 'warning')
+      showToast(t('create.validation.loginToUpload'), 'warning')
       return
     }
 
@@ -327,21 +311,21 @@ export default function CreateSkill() {
 
       const { version } = await uploadSkillFiles(accessToken, skill.id, {
         files: uploadable,
-        changeSummary: 'Initial upload',
+        changeSummary: t('create.changeSummary.initialUpload'),
       })
 
       // Step 3: Optionally publish if public/unlisted
       if (visibility !== 'private') {
         await publishSkill(accessToken, skill.id, {
           version,
-          changeSummary: 'Initial release',
+          changeSummary: t('create.changeSummary.initialRelease'),
         })
       }
 
       showToast(
         visibility === 'private'
-          ? 'Skill saved as draft'
-          : `Skill published as ${visibility}`,
+          ? t('create.saveDraft')
+          : t('create.publishedAs', { visibility: t(`create.visibility.${visibility}.label`) }),
         'success'
       )
       setSaveSuccess(true)
@@ -351,11 +335,11 @@ export default function CreateSkill() {
       setDescription('')
       setDescriptionZh('')
       setTags('')
-      setFiles([createTextFile('SKILL.md', SKILL_TEMPLATE)])
+      setFiles([createTextFile('SKILL.md', skillTemplate)])
       setActiveFile('SKILL.md')
       setBinaryNotice(null)
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to upload skill', 'error')
+      showToast(error instanceof Error ? error.message : t('create.uploadFailed'), 'error')
     } finally {
       setSaving(false)
     }
@@ -391,15 +375,15 @@ export default function CreateSkill() {
   }
 
   const handleAddFile = () => {
-    const newPath = prompt('Enter relative path (e.g., README.md or assets/example.txt)')
+    const newPath = prompt(t('create.promptPath'))
     if (!newPath) return
     const cleanPath = newPath.trim().replace(/^\/+/, '')
     if (!cleanPath || cleanPath.includes('..')) {
-      showToast('Invalid path', 'warning')
+      showToast(t('create.invalidPath'), 'warning')
       return
     }
     if (files.some(f => f.path.toLowerCase() === cleanPath.toLowerCase())) {
-      showToast('File already exists', 'warning')
+      showToast(t('create.fileExists'), 'warning')
       return
     }
     const updated = [...files, createTextFile(cleanPath, '')]
@@ -409,7 +393,7 @@ export default function CreateSkill() {
 
   const handleRemoveFile = (path: string) => {
     if (path.toLowerCase() === 'skill.md') {
-      showToast('SKILL.md is required', 'warning')
+      showToast(t('create.validation.skillMdRequired'), 'warning')
       return
     }
     setFiles(prev => prev.filter(f => f.path !== path))
@@ -420,7 +404,7 @@ export default function CreateSkill() {
 
   const handleImportZip = async (file: File) => {
     if (file.size > MAX_PACKAGE_BYTES) {
-      showToast('Zip exceeds 30MB limit', 'warning')
+      showToast(t('create.import.zipTooLarge', { max: maxPackageMb }), 'warning')
       return
     }
     try {
@@ -428,7 +412,7 @@ export default function CreateSkill() {
       const entries = unzipSync(data)
       const entryNames = Object.keys(entries).filter(name => !name.startsWith('__MACOSX/'))
       if (entryNames.length === 0) {
-        showToast('Zip is empty', 'warning')
+        showToast(t('create.import.emptyZip'), 'warning')
         return
       }
 
@@ -436,7 +420,7 @@ export default function CreateSkill() {
       const first = entryNames[0]
       const root = first.includes('/') ? first.split('/')[0] : null
       if (!root) {
-        showToast('Zip must contain a top-level folder with SKILL.md', 'warning')
+        showToast(t('create.import.missingRootFolder'), 'warning')
         return
       }
 
@@ -445,13 +429,13 @@ export default function CreateSkill() {
 
       for (const fullPath of entryNames) {
         if (!fullPath.startsWith(root + '/')) {
-          showToast('Zip must have a single top-level folder', 'warning')
+          showToast(t('create.import.multipleRootFolders'), 'warning')
           return
         }
         const rel = fullPath.slice(root.length + 1)
         if (!rel || rel.endsWith('/')) continue
         if (rel.includes('..')) {
-          showToast('Zip contains invalid paths', 'warning')
+          showToast(t('create.import.invalidPaths'), 'warning')
           return
         }
         const fileData = entries[fullPath]
@@ -468,17 +452,17 @@ export default function CreateSkill() {
       }
 
       if (!hasSkillMd(imported)) {
-        showToast('SKILL.md missing in zip', 'warning')
+        showToast(t('create.import.skillMdMissing'), 'warning')
         return
       }
 
       setFiles(imported)
       setActiveFile('SKILL.md')
-      setBinaryNotice(binaryCount > 0 ? `Imported ${binaryCount} binary file(s). They can be exported as Claude zip but not edited.` : null)
-      showToast('Imported Claude zip package', 'success')
+      setBinaryNotice(binaryCount > 0 ? t('create.import.binaryNotice', { count: binaryCount }) : null)
+      showToast(t('create.import.success'), 'success')
     } catch (error) {
       console.error(error)
-      showToast('Failed to import zip', 'error')
+      showToast(t('create.import.failed'), 'error')
     }
   }
 
@@ -494,9 +478,9 @@ export default function CreateSkill() {
       <div className="flex-shrink-0 px-6 py-4 border-b border-border">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-foreground">Create Skill</h1>
+            <h1 className="text-xl font-bold text-foreground">{t('create.pageTitle')}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Write a new skill and save locally or upload to SkillHub Cloud
+              {t('create.pageSubtitle')}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -512,13 +496,13 @@ export default function CreateSkill() {
             <button
               onClick={() => importInputRef.current?.click()}
               className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg border border-border-light transition-colors group relative"
-              title="Import an existing skill package (.zip)"
+              title={t('create.import.title')}
             >
               <FolderArchive size={14} />
-              Import .zip
+              {t('create.import.button')}
               {/* Tooltip */}
               <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded shadow-lg border border-border whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
-                Import existing skill package to edit
+                {t('create.import.tooltip')}
               </span>
             </button>
 
@@ -531,7 +515,7 @@ export default function CreateSkill() {
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Glasses size={16} />
-              AI Generate
+              {t('create.aiGenerate')}
             </button>
             <button
               onClick={() => setShowAIIterateEditor(true)}
@@ -539,7 +523,7 @@ export default function CreateSkill() {
               className="flex items-center gap-2 px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <PenLine size={16} />
-              AI Edit
+              {t('create.aiEdit')}
             </button>
 
             {/* Divider */}
@@ -555,7 +539,7 @@ export default function CreateSkill() {
               }`}
             >
               {showPreview ? <EyeOff size={16} /> : <Eye size={16} />}
-              {showPreview ? 'Edit' : 'Preview'}
+              {showPreview ? t('common.edit') : t('create.preview')}
             </button>
           </div>
         </div>
@@ -571,7 +555,7 @@ export default function CreateSkill() {
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Skill name..."
+              placeholder={t('create.namePlaceholder')}
               className="w-full text-lg font-semibold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground"
             />
           </div>
@@ -580,13 +564,13 @@ export default function CreateSkill() {
           <div className="flex-1 flex overflow-hidden" data-color-mode={theme}>
             <div className="w-64 border-r border-border flex-shrink-0 flex flex-col">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                <span className="text-sm font-medium text-foreground">Files</span>
+                <span className="text-sm font-medium text-foreground">{t('create.files')}</span>
                 <button
                   onClick={handleAddFile}
                   className="flex items-center gap-1 text-xs px-2 py-1 border rounded-md border-border hover:border-foreground"
                 >
                   <FilePlus2 size={14} />
-                  Add
+                  {t('create.addFile')}
                 </button>
               </div>
               <div className="flex-1 overflow-auto">
@@ -609,7 +593,7 @@ export default function CreateSkill() {
                           handleRemoveFile(file.path)
                         }}
                         className="text-muted-foreground hover:text-foreground"
-                        aria-label="Remove file"
+                        aria-label={t('create.removeFile')}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -618,7 +602,10 @@ export default function CreateSkill() {
                 ))}
               </div>
               <div className="px-4 py-2 text-xs text-muted-foreground border-t border-border">
-                Package size: {(totalSize(files) / (1024 * 1024)).toFixed(1)} MB / 30 MB
+                {t('create.packageSize', {
+                  current: (totalSize(files) / (1024 * 1024)).toFixed(1),
+                  max: maxPackageMb.toFixed(0),
+                })}
                 {binaryNotice && (
                   <div className="mt-2 text-[11px] text-amber-500">
                     {binaryNotice}
@@ -631,13 +618,13 @@ export default function CreateSkill() {
               {showPreview ? (
                 <div className="p-6 prose dark:prose-invert max-w-none">
                   <MDEditor.Markdown
-                    source={activeFileData?.isBinary ? '*Binary file preview not supported*' : (activeFileData?.text ?? '')}
+                    source={activeFileData?.isBinary ? t('create.binaryPreview') : (activeFileData?.text ?? '')}
                     style={{ background: 'transparent' }}
                   />
                 </div>
               ) : activeFileData?.isBinary ? (
                 <div className="p-6 text-sm text-muted-foreground">
-                  Binary file editing is not supported. Export Claude zip to keep this file.
+                  {t('create.binaryEditing')}
                 </div>
               ) : (
                 <MDEditor
@@ -659,7 +646,7 @@ export default function CreateSkill() {
             {/* Save Target Toggle */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                Save to
+                {t('create.saveTo')}
               </label>
               <div className="flex rounded-lg border border-border overflow-hidden">
                 <button
@@ -671,7 +658,7 @@ export default function CreateSkill() {
                   }`}
                 >
                   <HardDrive size={16} />
-                  Local
+                  {t('create.saveLocal')}
                 </button>
                 <button
                   onClick={() => setSaveTarget('cloud')}
@@ -682,7 +669,7 @@ export default function CreateSkill() {
                   }`}
                 >
                   <Cloud size={16} />
-                  Cloud
+                  {t('create.saveCloud')}
                 </button>
               </div>
             </div>
@@ -693,19 +680,19 @@ export default function CreateSkill() {
                 <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                   <Info size={16} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-blue-700 dark:text-blue-300">
-                    Skill will be installed directly to selected tools on your machine.
+                    {t('create.localInfo')}
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Install to
+                    {t('create.installTo')}
                   </label>
                   {installedTools.length > 0 ? (
                     <ToolSelector compact />
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      No AI coding tools detected
+                      {t('toolSelector.noTools')}
                     </p>
                   )}
                 </div>
@@ -717,22 +704,22 @@ export default function CreateSkill() {
               <div className="space-y-4">
                 {!isAuthenticated && (
                   <div className="flex items-start gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                    <AlertCircle size={16} className="text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                      Please login to upload skills to SkillHub Cloud.
-                    </p>
-                  </div>
+                  <AlertCircle size={16} className="text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                    {t('create.cloudLoginWarning')}
+                  </p>
+                </div>
                 )}
 
                 {/* Description */}
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1.5">
-                    Description
+                    {t('create.description')}
                   </label>
                   <textarea
                     value={description}
                     onChange={e => setDescription(e.target.value)}
-                    placeholder="Brief description of your skill..."
+                    placeholder={t('create.descriptionPlaceholder')}
                     className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                   />
                 </div>
@@ -740,13 +727,13 @@ export default function CreateSkill() {
                 {/* Description (Chinese) */}
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1.5">
-                    Description (Chinese)
-                    <span className="text-muted-foreground font-normal ml-1">optional</span>
+                    {t('create.descriptionZh')}
+                    <span className="text-muted-foreground font-normal ml-1">{t('create.optional')}</span>
                   </label>
                   <textarea
                     value={descriptionZh}
                     onChange={e => setDescriptionZh(e.target.value)}
-                    placeholder="中文描述..."
+                    placeholder={t('create.descriptionZhPlaceholder')}
                     className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground resize-none h-16 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                   />
                 </div>
@@ -754,13 +741,13 @@ export default function CreateSkill() {
                 {/* Category */}
                 <div ref={categoryRef} className="relative">
                   <label className="block text-sm font-medium text-foreground mb-1.5">
-                    Category
+                    {t('create.category')}
                   </label>
                   <button
                     onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
                     className="w-full flex items-center justify-between px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground hover:border-foreground transition-colors"
                   >
-                    <span>{selectedCategory?.label}</span>
+                    <span>{selectedCategory ? t(selectedCategory.labelKey) : ''}</span>
                     <ChevronDown size={16} className={`transition-transform ${showCategoryDropdown ? 'rotate-180' : ''}`} />
                   </button>
                   {showCategoryDropdown && (
@@ -776,7 +763,7 @@ export default function CreateSkill() {
                             category === cat.id ? 'bg-secondary font-medium' : ''
                           }`}
                         >
-                          {cat.label}
+                          {t(cat.labelKey)}
                         </button>
                       ))}
                     </div>
@@ -786,14 +773,14 @@ export default function CreateSkill() {
                 {/* Tags */}
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1.5">
-                    Tags
-                    <span className="text-muted-foreground font-normal ml-1">comma separated</span>
+                    {t('create.tags')}
+                    <span className="text-muted-foreground font-normal ml-1">{t('create.commaSeparated')}</span>
                   </label>
                   <input
                     type="text"
                     value={tags}
                     onChange={e => setTags(e.target.value)}
-                    placeholder="react, typescript, testing"
+                    placeholder={t('create.tagsPlaceholder')}
                     className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
                   />
                 </div>
@@ -801,7 +788,7 @@ export default function CreateSkill() {
                 {/* Visibility */}
                 <div ref={visibilityRef} className="relative">
                   <label className="block text-sm font-medium text-foreground mb-1.5">
-                    Visibility
+                    {t('create.visibilityLabel')}
                   </label>
                   <button
                     onClick={() => setShowVisibilityDropdown(!showVisibilityDropdown)}
@@ -809,7 +796,7 @@ export default function CreateSkill() {
                   >
                     <span className="flex items-center gap-2">
                       {selectedVisibility?.icon}
-                      {selectedVisibility?.label}
+                      {selectedVisibility ? t(selectedVisibility.labelKey) : ''}
                     </span>
                     <ChevronDown size={16} className={`transition-transform ${showVisibilityDropdown ? 'rotate-180' : ''}`} />
                   </button>
@@ -828,10 +815,10 @@ export default function CreateSkill() {
                         >
                           <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                             {opt.icon}
-                            {opt.label}
+                            {t(opt.labelKey)}
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5 ml-6">
-                            {opt.desc}
+                            {t(opt.descKey)}
                           </p>
                         </button>
                       ))}
@@ -862,17 +849,17 @@ export default function CreateSkill() {
               {saving ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  {saveTarget === 'local' ? 'Installing...' : 'Uploading...'}
+                  {saveTarget === 'local' ? t('create.installing') : t('create.uploading')}
                 </>
               ) : saveSuccess ? (
                 <>
                   <CheckCircle2 size={18} />
-                  {saveTarget === 'local' ? 'Installed!' : 'Uploaded!'}
+                  {saveTarget === 'local' ? t('create.installed') : t('create.uploaded')}
                 </>
               ) : (
                 <>
                   {saveTarget === 'local' ? <Save size={18} /> : <Upload size={18} />}
-                  {saveTarget === 'local' ? 'Install Locally' : 'Upload to Cloud'}
+                  {saveTarget === 'local' ? t('create.installLocally') : t('create.uploadToCloud')}
                 </>
               )}
             </button>
@@ -892,8 +879,8 @@ export default function CreateSkill() {
           >
             <div className="flex items-center justify-between p-4 border-b-2 border-border-light">
               <div>
-                <h2 className="text-xl font-bold tracking-tight">INSTALL SKILL</h2>
-                <p className="text-sm text-muted-foreground">{name || 'New Skill'}</p>
+                <h2 className="text-xl font-bold tracking-tight">{t('create.installSkill')}</h2>
+                <p className="text-sm text-muted-foreground">{name || t('create.newSkill')}</p>
               </div>
               <button
                 onClick={() => setShowInstallModal(false)}
@@ -912,7 +899,7 @@ export default function CreateSkill() {
                 onClick={() => setShowInstallModal(false)}
                 className="flex-1 px-4 py-2 border-2 border-border text-foreground font-medium rounded hover:bg-secondary transition-colors"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={async () => {
@@ -922,7 +909,7 @@ export default function CreateSkill() {
                 disabled={saving || selectedToolIds.length === 0}
                 className="flex-1 px-4 py-2 bg-foreground text-background font-medium rounded hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {saving ? 'Installing...' : 'Install'}
+                {saving ? t('create.installing') : t('create.installLabel')}
               </button>
             </div>
           </div>

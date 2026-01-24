@@ -9,6 +9,8 @@ import ToolSelector from './ToolSelector'
 import FilePreview from './FilePreview'
 import SkillPlayground from './SkillPlayground'
 import RelatedSkills from './RelatedSkills'
+import { Button } from './ui/button'
+import { Dialog, DialogContent } from './ui/dialog'
 
 
 interface SkillDetailProps {
@@ -75,12 +77,14 @@ function FileTreeNode({
         style={{ paddingLeft: `${depth * 12 + 4}px` }}
       >
         {/* Checkbox */}
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={(e) => {
             e.stopPropagation()
             onToggleCheck(node.path, isFolder, node.children)
           }}
-          className="p-0.5 hover:bg-secondary rounded"
+          className="h-5 w-5 p-0.5 hover:bg-secondary rounded"
         >
           {isChecked ? (
             <CheckSquare size={14} className="text-foreground" />
@@ -89,7 +93,7 @@ function FileTreeNode({
           ) : (
             <Square size={14} className="text-muted-foreground" />
           )}
-        </button>
+        </Button>
         
         {/* Folder expand/collapse or file icon */}
         <div
@@ -142,7 +146,7 @@ function FileTreeNode({
 }
 
 export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetailProps) {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { selectedToolIds, installTarget, projectPath, showToast } = useAppStore()
 
   const [skill, setSkill] = useState<SkillHubSkill>(initialSkill)
@@ -182,7 +186,7 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
       .then(setSkill)
       .catch((error) => {
         console.error('Failed to load skill details:', error)
-        showToast('Failed to load skill details', 'error')
+        showToast(t('skillDetail.failedToLoadDetails'), 'error')
       })
       .finally(() => setLoading(false))
   }, [initialSkill.slug, showToast])
@@ -198,7 +202,7 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
       setFilesData(data)
     } catch (error) {
       console.error('Failed to load files:', error)
-      showToast('Failed to load file structure', 'error')
+      showToast(t('skillDetail.failedToLoadFiles'), 'error')
     } finally {
       setFilesLoading(false)
     }
@@ -229,7 +233,7 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
       setFileContent(content)
     } catch (error) {
       console.error('Failed to load file content:', error)
-      showToast('Failed to load file content', 'error')
+      showToast(t('skillDetail.failedToLoadContent'), 'error')
     } finally {
       setFileContentLoading(false)
     }
@@ -268,12 +272,12 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
   const handleInstall = async () => {
     if (installing) return
     if (selectedToolIds.length === 0) {
-      showToast('Please select at least one tool', 'warning')
+      showToast(t('skillDetail.selectTool'), 'warning')
       return
     }
 
     if (installTarget === 'project' && !projectPath) {
-      showToast('Please select a project folder first', 'warning')
+      showToast(t('skillDetail.selectProjectFirst'), 'warning')
       return
     }
 
@@ -297,17 +301,17 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
       }
       if (installTarget === 'project' && projectPath) {
         await smartInstallSkillToProject(installSkillData, projectPath, selectedToolIds)
-        showToast(`Installed "${skill.name}" to project`, 'success')
+        showToast(t('skillDetail.installedToProject', { name: skill.name }), 'success')
       } else {
         await smartInstallSkill(installSkillData, selectedToolIds)
-        showToast(`Installed "${skill.name}" to ${selectedToolIds.length} tool(s)`, 'success')
+        showToast(t('skillDetail.installedToTools', { name: skill.name, count: selectedToolIds.length }), 'success')
       }
       onClose()
       return
     }
 
     if (!hasFilesSelected && !skill.skill_md_raw) {
-      showToast('No files selected for installation', 'warning')
+      showToast(t('skillDetail.noFilesSelected'), 'warning')
       return
     }
 
@@ -348,11 +352,11 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
             for (const toolId of selectedToolIds) {
               await installSkillFilesToProject(files, folderName, projectPath, toolId)
             }
-            showToast(`Installed ${files.length} file(s) to project`, 'success')
+            showToast(t('skillDetail.installedFilesToProject', { count: files.length }), 'success')
           } else {
             // Install all files together preserving structure
             await installSkillFiles(files, folderName, selectedToolIds)
-            showToast(`Installed ${files.length} file(s) to ${selectedToolIds.length} tool(s)`, 'success')
+            showToast(t('skillDetail.installedFilesToTools', { count: files.length, toolCount: selectedToolIds.length }), 'success')
           }
           onClose()
         } else {
@@ -373,16 +377,16 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
               toolId,
             })
           }
-          showToast(`Installed "${skill.name}" to project`, 'success')
+          showToast(t('skillDetail.installedToProject', { name: skill.name }), 'success')
         } else {
           await installSkill(skill.skill_md_raw, skill.name, selectedToolIds)
-          showToast(`Installed "${skill.name}" to ${selectedToolIds.length} tool(s)`, 'success')
+          showToast(t('skillDetail.installedToTools', { name: skill.name, count: selectedToolIds.length }), 'success')
         }
         onClose()
       }
     } catch (error) {
       console.error('Install failed:', error)
-      showToast('Installation failed. Please try again.', 'error')
+      showToast(t('skillDetail.installFailed'), 'error')
     } finally {
       setInstalling(false)
     }
@@ -397,9 +401,13 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-      <div className="bg-background border border-border rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl">
-        {/* Header */}
+    <>
+      <Dialog open onOpenChange={(open) => (!open ? onClose() : undefined)}>
+        <DialogContent
+          showClose={false}
+          className="w-full max-w-3xl max-h-[90vh] p-0 overflow-hidden border border-border rounded-lg flex flex-col shadow-2xl"
+        >
+          {/* Header */}
         <div className="flex items-start justify-between px-8 py-6 border-b border-border">
           <div className="flex-1 min-w-0 pr-6">
             <div className="flex items-center gap-4 mb-2">
@@ -410,50 +418,58 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
                 </span>
               )}
             </div>
-            <p className="text-muted-foreground">by {skill.author}</p>
+            <p className="text-muted-foreground">{t('skillDetail.byAuthor', { name: skill.author })}</p>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
+            className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-secondary"
           >
             <X size={20} />
-          </button>
+          </Button>
         </div>
 
         {/* Tabs */}
         <div className="flex border-b border-border px-8">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+            <Button
+              onClick={() => setActiveTab('overview')}
+            variant="ghost"
+            size="sm"
+            className={`h-auto px-5 py-3 text-sm font-medium border-b-2 rounded-none transition-colors ${
               activeTab === 'overview'
                 ? 'border-foreground text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('files')}
-            className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+            {t('skillDetail.overview')}
+            </Button>
+            <Button
+              onClick={() => setActiveTab('files')}
+            variant="ghost"
+            size="sm"
+            className={`h-auto px-5 py-3 text-sm font-medium border-b-2 rounded-none transition-colors flex items-center gap-2 ${
               activeTab === 'files'
                 ? 'border-foreground text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Folder size={14} />
-            Files
-          </button>
-          <button
-            onClick={() => setActiveTab('content')}
-            className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+              <Folder size={14} />
+            {t('skillDetail.files')}
+            </Button>
+            <Button
+              onClick={() => setActiveTab('content')}
+            variant="ghost"
+            size="sm"
+            className={`h-auto px-5 py-3 text-sm font-medium border-b-2 rounded-none transition-colors flex items-center gap-2 ${
               activeTab === 'content'
                 ? 'border-foreground text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            <FileText size={14} />
-            SKILL.md
-          </button>
+              <FileText size={14} />
+            {t('skillDetail.skillMd')}
+            </Button>
         </div>
 
         {/* Content */}
@@ -469,7 +485,7 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
                 {skill.github_stars !== undefined && skill.github_stars > 0 && (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Star size={18} className="text-yellow-500" />
-                    <span className="font-medium">{skill.github_stars.toLocaleString()} stars</span>
+                    <span className="font-medium">{t('skillDetail.starsCount', { count: skill.github_stars })}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -478,14 +494,17 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
                 </div>
                 {skill.simple_score && (
                   <div className="text-muted-foreground">
-                    Score: <span className="font-bold text-foreground">{skill.simple_score.toFixed(1)}</span>
+                    {t('skillDetail.scoreLabel')}{' '}
+                    <span className="font-bold text-foreground">{skill.simple_score.toFixed(1)}</span>
                   </div>
                 )}
               </div>
 
               {/* Description */}
               <div>
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-2">Description</h3>
+                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-2">
+                  {t('skillDetail.description')}
+                </h3>
                 <p className="text-foreground leading-relaxed">
                   {i18n.language === 'zh' && skill.description_zh ? skill.description_zh : skill.description}
                 </p>
@@ -494,7 +513,9 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
               {/* Tags */}
               {skill.tags && skill.tags.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-2">Tags</h3>
+                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-2">
+                    {t('skillDetail.tags')}
+                  </h3>
                   <div className="flex flex-wrap gap-2">
                     {skill.tags.map(tag => (
                       <span
@@ -510,14 +531,16 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
 
               {/* GitHub Link */}
               <div>
-                <button
+                <Button
                   onClick={openGitHub}
-                  className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto px-0 text-muted-foreground hover:text-foreground text-sm"
                 >
                   <Github size={16} />
-                  <span>View on GitHub</span>
+                  <span>{t('skillDetail.viewOnGitHub')}</span>
                   <ExternalLink size={12} />
-                </button>
+                </Button>
               </div>
 
               {/* Related Skills */}
@@ -536,7 +559,7 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
                     .then(setSkill)
                     .catch((error) => {
                       console.error('Failed to load skill details:', error)
-                      showToast('Failed to load skill details', 'error')
+                      showToast(t('skillDetail.failedToLoadDetails'), 'error')
                     })
                     .finally(() => setLoading(false))
                 }}
@@ -554,8 +577,15 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
                   {/* File tree - left side */}
                   <div className="w-56 border-r border-border pr-3 overflow-auto flex-shrink-0">
                     <div className="text-xs text-muted-foreground mb-2 px-1 flex items-center justify-between">
-                      <span>{checkedFiles.size}/{filesData.stats.total_files} selected</span>
-                      <button
+                      <span>
+                        {t('skillDetail.selectedCount', {
+                          selected: checkedFiles.size,
+                          total: filesData.stats.total_files,
+                        })}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => {
                           if (checkedFiles.size === allFilePaths.length) {
                             setCheckedFiles(new Set())
@@ -563,10 +593,12 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
                             setCheckedFiles(new Set(allFilePaths))
                           }
                         }}
-                        className="text-foreground hover:underline"
+                        className="h-auto px-1 text-foreground hover:underline"
                       >
-                        {checkedFiles.size === allFilePaths.length ? 'None' : 'All'}
-                      </button>
+                        {checkedFiles.size === allFilePaths.length
+                          ? t('skillDetail.selectNone')
+                          : t('skillDetail.selectAll')}
+                      </Button>
                     </div>
                     {filesData.tree.map(node => (
                       <FileTreeNode 
@@ -598,14 +630,14 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
                       </div>
                     ) : (
                       <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                        Select a file to view its content
+                        {t('skillDetail.selectFileToView')}
                       </div>
                     )}
                   </div>
                 </>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                  Failed to load file structure
+                  {t('skillDetail.failedToLoadFiles')}
                 </div>
               )}
             </div>
@@ -616,13 +648,15 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
               ) : (
                 <div className="text-center py-16 text-muted-foreground">
                   <FileText size={48} className="mx-auto mb-4 opacity-30" />
-                  <p>SKILL.md content not available</p>
-                  <button
+                  <p>{t('skillDetail.skillMdMissing')}</p>
+                  <Button
                     onClick={openGitHub}
-                    className="mt-3 text-foreground hover:underline"
+                    variant="link"
+                    size="sm"
+                    className="h-auto px-0 text-foreground"
                   >
-                    View on GitHub
-                  </button>
+                    {t('skillDetail.viewOnGitHub')}
+                  </Button>
                 </div>
               )}
             </div>
@@ -631,66 +665,75 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
 
         {/* Footer - Install Section */}
         <div className="border-t border-border px-6 py-4 flex items-center gap-4 bg-secondary/30">
-          <span className="text-sm font-medium text-muted-foreground flex-shrink-0">Install to:</span>
+          <span className="text-sm font-medium text-muted-foreground flex-shrink-0">
+            {t('skillDetail.installTo')}
+          </span>
           <div className="flex-1 min-w-0">
             <ToolSelector compact />
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button
+            <Button
               onClick={onClose}
-              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary rounded transition-colors"
+              variant="ghost"
+              size="sm"
+              className="h-auto px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary"
             >
-              Cancel
-            </button>
-            <button
+              {t('common.cancel')}
+            </Button>
+            <Button
               onClick={() => setShowPlayground(true)}
-              className="flex items-center gap-2 px-4 py-2 text-sm bg-purple-600 text-white font-semibold rounded hover:bg-purple-700 transition-all"
+              size="sm"
+              className="h-auto px-4 py-2 text-sm bg-purple-600 text-white font-semibold hover:bg-purple-700"
             >
               <Play size={14} />
-              Try
-            </button>
-            <button
+              {t('skillDetail.try')}
+            </Button>
+            <Button
               onClick={() => setShowInstallModal(true)}
               disabled={installing || selectedToolIds.length === 0}
-              className="flex items-center gap-2 px-4 py-2 text-sm bg-foreground text-background font-semibold rounded hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              size="sm"
+              className="h-auto px-4 py-2 text-sm bg-foreground text-background font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {installing ? (
                 <>
                   <Loader2 size={14} className="animate-spin" />
-                  Installing...
+                  {t('skillDetail.installing')}
                 </>
               ) : (
                 <>
                   <Download size={14} />
-                  Install
+                  {t('skillDetail.install')}
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </div>
-      </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Install Modal (reuse outer flow) */}
       {showInstallModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowInstallModal(false)}
+        <Dialog
+          open={showInstallModal}
+          onOpenChange={(open) => (!open ? setShowInstallModal(false) : undefined)}
         >
-          <div
-            className="bg-background border-2 border-foreground w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+          <DialogContent
+            showClose={false}
+            className="w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto border-2 border-foreground p-0"
           >
             <div className="flex items-center justify-between p-4 border-b-2 border-border-light">
               <div>
-                <h2 className="text-xl font-bold tracking-tight">INSTALL SKILL</h2>
+                <h2 className="text-xl font-bold tracking-tight">{t('skillDetail.installSkill')}</h2>
                 <p className="text-sm text-muted-foreground">{skill.name}</p>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setShowInstallModal(false)}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
               >
                 <X size={20} />
-              </button>
+              </Button>
             </div>
 
             <div className="p-4">
@@ -698,25 +741,26 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
             </div>
 
             <div className="flex gap-3 p-4 border-t-2 border-border-light">
-              <button
+              <Button
                 onClick={() => setShowInstallModal(false)}
-                className="btn btn-secondary flex-1"
+                variant="outline"
+                className="flex-1 border-2 border-foreground"
               >
-                Cancel
-              </button>
-              <button
+                {t('common.cancel')}
+              </Button>
+              <Button
                 onClick={async () => {
                   await handleInstall()
                   setShowInstallModal(false)
                 }}
                 disabled={installing || selectedToolIds.length === 0}
-                className="btn btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {installing ? 'Installing...' : 'Install'}
-              </button>
+                {installing ? t('skillDetail.installing') : t('skillDetail.install')}
+              </Button>
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Skill Playground Modal */}
@@ -735,6 +779,6 @@ export default function SkillDetail({ skill: initialSkill, onClose }: SkillDetai
           }}
         />
       )}
-    </div>
+    </>
   )
 }

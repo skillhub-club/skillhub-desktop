@@ -46,7 +46,7 @@ export function UpdateChecker() {
       }
     } catch (err) {
       console.error('Update check failed:', err);
-      setError(err instanceof Error ? err.message : 'Update check failed');
+      setError(err instanceof Error ? err.message : t('update.checkFailed'));
       setStatus('error');
       if (silent) {
         // Don't show error for silent checks
@@ -89,7 +89,7 @@ export function UpdateChecker() {
       setStatus('ready');
     } catch (err) {
       console.error('Download failed:', err);
-      setError(err instanceof Error ? err.message : 'Download failed');
+      setError(err instanceof Error ? err.message : t('update.downloadFailed'));
       setStatus('error');
     }
   }, []);

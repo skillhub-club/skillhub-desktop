@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { HelpCircle, Check } from 'lucide-react'
+import { Button } from '../ui/button'
 
 export interface QuestionOption {
   label: string
@@ -57,7 +58,7 @@ export function QuestionCard({ questions, onSubmit, onSkip }: QuestionCardProps)
       {/* Header */}
       <div className="px-4 py-3 border-b border-border/30 flex items-center gap-2">
         <HelpCircle className="w-4 h-4 text-muted-foreground" />
-        <span className="text-foreground font-medium text-sm">Claude needs your input</span>
+        <span className="text-foreground font-medium text-sm">{t('questionCard.needsInput')}</span>
       </div>
 
       {/* Questions */}
@@ -69,14 +70,16 @@ export function QuestionCard({ questions, onSubmit, onSkip }: QuestionCardProps)
               {q.options.map((opt, optIdx) => {
                 const isSelected = (selectedAnswers[qIdx] || []).includes(opt.label)
                 return (
-                  <button
+                  <Button
                     key={optIdx}
                     onClick={() => handleAnswerSelect(qIdx, opt.label, q.multiSelect)}
-                    className={`w-full text-left px-3 py-2.5 rounded-[6px] transition-all text-sm
+                    className={`w-full h-auto justify-start px-3 py-2.5 rounded-[6px] transition-all text-sm
                                 ${isSelected
                                   ? 'bg-foreground text-background shadow-minimal'
                                   : 'bg-secondary/50 text-foreground hover:bg-secondary shadow-minimal'
                                 }`}
+                    variant="ghost"
+                    size="sm"
                   >
                     <div className="flex items-center gap-2">
                       {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
@@ -87,7 +90,7 @@ export function QuestionCard({ questions, onSubmit, onSkip }: QuestionCardProps)
                         {opt.description}
                       </span>
                     )}
-                  </button>
+                  </Button>
                 )
               })}
             </div>
@@ -96,21 +99,23 @@ export function QuestionCard({ questions, onSubmit, onSkip }: QuestionCardProps)
 
         {/* Actions */}
         <div className="flex gap-2 pt-2">
-          <button
+          <Button
             onClick={handleSubmit}
             disabled={!hasAnswers}
-            className="px-4 py-2 bg-foreground hover:bg-foreground/90 disabled:bg-muted disabled:text-muted-foreground
-                       text-background font-medium text-sm rounded-[6px] transition-colors"
+            className="h-auto px-4 py-2"
+            variant="default"
+            size="sm"
           >
             {t('questionCard.submit')}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onSkip}
-            className="px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-secondary
-                       font-medium text-sm rounded-[6px] transition-colors shadow-minimal"
+            className="h-auto px-4 py-2 text-muted-foreground hover:text-foreground shadow-minimal"
+            variant="secondary"
+            size="sm"
           >
             {t('questionCard.skip')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

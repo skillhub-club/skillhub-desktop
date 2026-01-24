@@ -2,13 +2,8 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { spawn, IPty } from 'tauri-pty'
 import { invoke } from '@tauri-apps/api/core'
-import {
-  X, Play, Square, Download,
-  MessageSquare, Settings2, PanelRightClose, PanelRight,
-  FileText, RotateCcw, AlertTriangle, Wallet, RefreshCw
-} from 'lucide-react'
+import { MessageSquare } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
-import FilePreview from './FilePreview'
 import {
   UserMessageBubble,
   QuestionCard,
@@ -16,11 +11,16 @@ import {
   AssistantMessage,
   ToolCallCard,
   type ToolStatus,
+  PlaygroundHeader,
+  PlaygroundSettingsPanel,
+  PlaygroundArtifactsPanel,
+  PlaygroundInputBar,
 } from './playground'
 import SetupWizard from './SetupWizard'
 import { useDependencies } from '../hooks/useDependencies'
 import { useAppStore } from '../store'
 import { fetchWallet } from '../api/auth'
+import { Dialog, DialogContent } from './ui/dialog'
 
 
 const SKILLHUB_URL = import.meta.env.VITE_SKILLHUB_API_URL || 'https://www.skillhub.club'
@@ -166,7 +166,7 @@ export default function SkillPlayground({
   const [showSetupWizard, setShowSetupWizard] = useState(false)
 
   // Wallet balance
-  const { isAuthenticated } = useAppStore()
+  const { isAuthenticated, showToast } = useAppStore()
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
   const [walletLoading, setWalletLoading] = useState(false)
 
@@ -384,11 +384,11 @@ export default function SkillPlayground({
       setArtifactContent(content)
     } catch (error) {
       setArtifactContent('')
-      setArtifactError(error instanceof Error ? error.message : 'Failed to load file')
+      setArtifactError(error instanceof Error ? error.message : t('playground.failedToLoadFile'))
     } finally {
       setArtifactLoading(false)
     }
-  }, [])
+  }, [t])
 
   const formatToolInput = (toolName: string, input: Record<string, unknown>): string => {
     switch (toolName) {
@@ -496,7 +496,26 @@ export default function SkillPlayground({
         case 'result':
           finalizeAssistant()
           if (event.is_error && event.result) {
-            addAssistantMessage(event.result, false)
+            const rawResult = event.result
+            if (rawResult.includes('insufficient_balance')) {
+              let minimum = '0.01'
+              const match = rawResult.match(/Minimum required:\s*\$([0-9.]+)/i)
+              if (match?.[1]) {
+                minimum = match[1]
+              }
+
+              showToast(
+                t('playground.insufficientBalanceToast', { minimum }),
+                'error',
+                {
+                  actionLabel: t('playground.topUpAction'),
+                  onAction: () => open(`${SKILLHUB_URL}/web/account/developer`),
+                  duration: 6000,
+                }
+              )
+            } else {
+              addAssistantMessage(rawResult, false)
+            }
           }
           break
       }
@@ -504,7 +523,7 @@ export default function SkillPlayground({
       // Not valid JSON, might be partial output
       console.log('Non-JSON output:', jsonStr)
     }
-  }, [skillMode, addArtifact, addToolCall, updateToolCallResult, addAssistantMessage, appendToAssistant, finalizeAssistant])
+  }, [skillMode, addArtifact, addToolCall, updateToolCallResult, addAssistantMessage, appendToAssistant, finalizeAssistant, showToast])
 
   // Handle answer selection for questions
   const handleAnswerSelect = (questionIndex: number, optionLabel: string, multiSelect: boolean) => {
@@ -788,179 +807,60 @@ export default function SkillPlayground({
     }
   }
 
-  return (
-    <>
-      {/* Setup Wizard Modal */}
-      <SetupWizard
-        isOpen={showSetupWizard}
-        onClose={() => setShowSetupWizard(false)}
-        onComplete={() => {
-          setShowSetupWizard(false)
-          refreshDeps()
-        }}
+  const content = (
+    <div className={variant === 'modal' ? 'flex flex-col max-h-[85vh]' : 'w-full h-full flex flex-col'}>
+      <PlaygroundHeader
+        title={t('playground.title')}
+        model={sessionInfo.model}
+        skillsActiveLabel={t('playground.skillsActive', { count: activeSkills.length })}
+        setupLabel={t('playground.setupRequired')}
+        showSetupWarning={Boolean(depStatus && !depStatus.claude_code.installed)}
+        onOpenSetup={() => setShowSetupWizard(true)}
+        showWallet={isAuthenticated && walletBalance !== null}
+        walletBalanceText={walletBalance !== null ? `$${walletBalance.toFixed(2)}` : '$0.00'}
+        walletIsLow={(walletBalance ?? 0) < 0.01}
+        walletLoading={walletLoading}
+        walletTitle={(walletBalance ?? 0) < 0.01 ? t('setup.insufficientBalance') : t('setup.balanceInfo')}
+        onOpenWallet={() => open(`${SKILLHUB_URL}/web/account/developer`)}
+        showNewSession={events.length > 0}
+        onNewSession={startNewSession}
+        newSessionTitle={t('playground.newSession')}
+        showArtifacts={showArtifacts}
+        onToggleArtifacts={() => setShowArtifacts(!showArtifacts)}
+        artifactsTitle={showArtifacts ? t('playground.collapsePanel') : t('playground.expandPanel')}
+        showSettings={showSettings}
+        onToggleSettings={() => setShowSettings(!showSettings)}
+        settingsTitle={t('playground.settings')}
+        onClose={onClose}
       />
 
-      <div
-        className={variant === 'modal'
-          ? 'fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-6'
-          : `bg-background rounded-[8px] w-full h-full flex flex-col ${className ?? ''}`
-        }
-        onClick={variant === 'modal' ? onClose : undefined}
-      >
-        <div
-          className={variant === 'modal'
-            ? 'bg-background shadow-middle rounded-[8px] w-full max-w-5xl max-h-[85vh] flex flex-col'
-            : 'w-full h-full flex flex-col'
-          }
-          onClick={variant === 'modal' ? (e) => e.stopPropagation() : undefined}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-border-light">
-            <div className="flex items-center gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-foreground">
-                {t('playground.title')}
-              </h2>
-              <div className="flex items-center gap-2 mt-0.5">
-                {sessionInfo.model && (
-                  <span className="text-[11px] px-1.5 py-0.5 rounded-[4px] bg-secondary text-muted-foreground">
-                    {sessionInfo.model}
-                  </span>
-                )}
-                <span className="text-[11px] text-muted-foreground">
-                  {t('playground.skillsActive', { count: activeSkills.length })}
-                </span>
-                {/* Dependency warning */}
-                {depStatus && !depStatus.claude_code.installed && (
-                  <button
-                    onClick={() => setShowSetupWizard(true)}
-                    className="text-[11px] px-1.5 py-0.5 rounded-[4px] bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center gap-1"
-                  >
-                    <AlertTriangle size={10} />
-                    {t('playground.setupRequired')}
-                  </button>
-                )}
-                {/* Wallet balance indicator */}
-                {isAuthenticated && walletBalance !== null && (
-                  <button
-                    onClick={() => open(`${SKILLHUB_URL}/web/account/developer`)}
-                    className={`text-[11px] px-1.5 py-0.5 rounded-[4px] flex items-center gap-1 transition-colors ${
-                      walletBalance < 0.01 
-                        ? 'bg-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/30' 
-                        : 'bg-green-500/20 text-green-600 dark:text-green-400 hover:bg-green-500/30'
-                    }`}
-                    title={walletBalance < 0.01 ? t('setup.insufficientBalance') : t('setup.balanceInfo')}
-                  >
-                    <Wallet size={10} />
-                    ${walletBalance.toFixed(2)}
-                    {walletLoading && <RefreshCw size={8} className="animate-spin" />}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            {/* 新建会话按钮 - 始终可见（有消息时） */}
-            {events.length > 0 && (
-              <button
-                onClick={startNewSession}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary/50 rounded-[6px] transition-colors"
-                title={t('playground.newSession')}
-              >
-                <RotateCcw size={18} />
-              </button>
-            )}
-            <button
-              onClick={() => setShowArtifacts(!showArtifacts)}
-              className={`p-2 rounded-[6px] transition-colors ${
-                showArtifacts
-                  ? 'text-foreground bg-secondary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-              }`}
-              title={showArtifacts ? t('playground.collapsePanel') : t('playground.expandPanel')}
-            >
-              {showArtifacts ? <PanelRightClose size={18} /> : <PanelRight size={18} />}
-            </button>
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className={`p-2 rounded-[6px] transition-colors ${
-                showSettings
-                  ? 'bg-secondary text-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-              }`}
-              title={t('playground.settings')}
-            >
-              <Settings2 size={18} />
-            </button>
-            {onClose && (
-              <button
-                onClick={onClose}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary/50 rounded-[6px] transition-colors"
-              >
-                <X size={18} />
-              </button>
-            )}
-          </div>
-        </div>
+      {/* Settings Panel */}
+      {showSettings && (
+        <PlaygroundSettingsPanel
+          permissionModes={[
+            { value: 'default', label: getPermissionModeLabel('default') },
+            { value: 'acceptEdits', label: getPermissionModeLabel('acceptEdits') },
+            { value: 'bypassPermissions', label: getPermissionModeLabel('bypassPermissions') },
+          ]}
+          activePermissionMode={permissionMode}
+          onPermissionChange={(value) => setPermissionMode(value as PermissionMode)}
+          skillModes={[
+            { value: 'native', label: t('playground.native') },
+            { value: 'system', label: t('playground.systemPrompt') },
+          ]}
+          activeSkillMode={skillMode}
+          onSkillModeChange={(value) => setSkillMode(value as SkillMode)}
+          workingDirectory={workingDirectory}
+          onWorkingDirectoryChange={setWorkingDirectory}
+          workingDirectoryLabel={t('playground.workingDir')}
+          permissionsLabel={t('playground.permissions')}
+          skillModeLabel={t('playground.skillMode')}
+          workingDirectoryPlaceholder={t('playground.workingDirPlaceholder')}
+        />
+      )}
 
-        {/* Settings Panel */}
-        {showSettings && (
-          <div className="px-5 py-3 border-b border-border-light bg-secondary/30">
-            <div className="flex flex-col gap-2.5">
-              {/* 权限模式 */}
-              <div className="flex items-center gap-3">
-                <label className="text-[12px] text-muted-foreground w-24">{t('playground.permissions')}</label>
-                <div className="flex gap-1.5">
-                  {(['default', 'acceptEdits', 'bypassPermissions'] as PermissionMode[]).map(mode => (
-                    <button
-                      key={mode}
-                      onClick={() => setPermissionMode(mode)}
-                      className={`px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors shadow-minimal ${
-                        permissionMode === mode
-                          ? 'bg-foreground text-background'
-                          : 'bg-background text-foreground hover:bg-secondary'
-                      }`}
-                    >
-                      {getPermissionModeLabel(mode)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* 技能模式 */}
-              <div className="flex items-center gap-3">
-                <label className="text-[12px] text-muted-foreground w-24">{t('playground.skillMode')}</label>
-                <div className="flex gap-1.5">
-                  {(['native', 'system'] as SkillMode[]).map(mode => (
-                    <button
-                      key={mode}
-                      onClick={() => setSkillMode(mode)}
-                      className={`px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors shadow-minimal ${
-                        skillMode === mode
-                          ? 'bg-foreground text-background'
-                          : 'bg-background text-foreground hover:bg-secondary'
-                      }`}
-                    >
-                      {mode === 'native' ? t('playground.native') : t('playground.systemPrompt')}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* 工作目录 */}
-              <div className="flex items-center gap-3">
-                <label className="text-[12px] text-muted-foreground w-24">{t('playground.workingDir')}</label>
-                <input
-                  value={workingDirectory}
-                  onChange={(e) => setWorkingDirectory(e.target.value)}
-                  placeholder={t('playground.workingDirPlaceholder')}
-                  className="flex-1 bg-background text-foreground px-2.5 py-1 rounded-[5px] shadow-minimal text-[11px] focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-hidden flex min-h-0">
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-hidden flex min-h-0">
           {/* Messages Area - Claude.ai style conversation */}
           <div className="flex-1 overflow-y-auto flex flex-col">
             {/* Running Status Indicator */}
@@ -1018,150 +918,66 @@ export default function SkillPlayground({
 
           {/* Artifacts Panel - Collapsible */}
           {showArtifacts && (
-            <div className="w-80 border-l border-border-light flex flex-col bg-secondary/30">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border-light">
-                <div className="flex items-center gap-2">
-                  <FileText size={16} className="text-muted-foreground" />
-                  <h3 className="text-[13px] font-medium text-foreground">{t('playground.artifacts')}</h3>
-                </div>
-                <span className="text-[11px] px-1.5 py-0.5 rounded-[4px] bg-secondary text-muted-foreground">
-                  {artifacts.length}
-                </span>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-4">
-                {artifacts.length === 0 ? (
-                  <div className="text-[12px] text-muted-foreground/60 text-center py-8">
-                    {t('playground.artifactsAppear')}
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {artifacts.map((item) => (
-                      <button
-                        key={item.path}
-                        onClick={() => loadArtifactContent(item.path)}
-                        className={`w-full text-left px-3 py-2 rounded-[6px] transition-colors ${
-                          selectedArtifactPath === item.path
-                            ? 'bg-foreground text-background'
-                            : 'bg-background hover:bg-secondary'
-                        }`}
-                      >
-                        <div className={`text-[12px] font-medium truncate ${
-                          selectedArtifactPath === item.path ? '' : 'text-foreground'
-                        }`}>
-                          {item.path.split('/').pop() || item.path}
-                        </div>
-                        <div className={`text-[10px] truncate ${
-                          selectedArtifactPath === item.path ? 'opacity-70' : 'text-muted-foreground'
-                        }`}>
-                          {item.toolName}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* File preview */}
-                {selectedArtifactPath && (
-                  <div className="mt-4">
-                    {artifactLoading && (
-                      <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                        <Spinner className="text-[8px]" />
-                        {t('common.loading')}
-                      </div>
-                    )}
-                    {artifactError && (
-                      <div className="text-[11px] text-[var(--destructive)]">{artifactError}</div>
-                    )}
-                    {!artifactLoading && !artifactError && (
-                      <FilePreview
-                        filename={selectedArtifactPath.split('/').pop() || selectedArtifactPath}
-                        content={artifactContent}
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+            <PlaygroundArtifactsPanel
+              artifacts={artifacts}
+              selectedArtifactPath={selectedArtifactPath}
+              onSelectArtifact={loadArtifactContent}
+              artifactLoading={artifactLoading}
+              artifactError={artifactError}
+              artifactContent={artifactContent}
+              title={t('playground.artifacts')}
+              emptyLabel={t('playground.artifactsAppear')}
+              loadingLabel={t('common.loading')}
+            />
           )}
         </div>
 
         {/* Input Container - Fixed at bottom */}
-        <div className="px-5 py-4 border-t border-border-light">
-          <div className="max-w-3xl mx-auto">
-            <div className="bg-background rounded-[12px] shadow-middle p-1">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={userTask}
-                  onChange={(e) => setUserTask(e.target.value)}
-                  placeholder={t('playground.describeTask')}
-                  className="flex-1 bg-transparent text-foreground text-sm px-4 py-3
-                             focus:outline-none
-                             placeholder:text-muted-foreground/60"
-                  onKeyDown={(e) => {
-                    // Ctrl+Enter (Windows/Linux) or Cmd+Enter (macOS) to send
-                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !isRunning) {
-                      e.preventDefault()
-                      runSkill()
-                    }
-                  }}
-                  disabled={isRunning}
-                />
-                {isRunning ? (
-                  <button
-                    onClick={stopSkill}
-                    className="px-5 py-3 bg-[var(--destructive)] hover:opacity-90
-                               text-white text-sm font-medium rounded-[10px] flex items-center gap-2 transition-colors"
-                  >
-                    <Square size={14} />
-                    {t('playground.stop')}
-                  </button>
-                ) : (
-                  <button
-                    onClick={runSkill}
-                    disabled={!userTask.trim()}
-                    className="px-5 py-3 bg-foreground hover:bg-foreground/90
-                               disabled:bg-muted disabled:text-muted-foreground
-                               text-background text-sm font-medium rounded-[10px] flex items-center gap-2 transition-colors"
-                  >
-                    <Play size={14} />
-                    {t('playground.run')}
-                  </button>
-                )}
-              </div>
-            </div>
-            {/* Footer info */}
-            <div className="flex items-center justify-between mt-2 px-1">
-              <span className="text-muted-foreground/60 text-[11px]">
-                {t('playground.poweredBy', { engine: t('playground.claudeCode') })}
-              </span>
-              <div className="flex gap-2">
-                {onClose && (
-                  <button
-                    onClick={onClose}
-                    className="px-3 py-1.5 text-muted-foreground hover:text-foreground
-                               text-[12px] font-medium rounded-[6px] transition-colors"
-                  >
-                    {t('common.close')}
-                  </button>
-                )}
-                {onInstall && (
-                  <button
-                    onClick={onInstall}
-                    className="px-3 py-1.5 bg-[var(--success)] hover:opacity-90
-                               text-white text-[12px] font-medium rounded-[6px] flex items-center gap-1.5 transition-colors shadow-minimal"
-                  >
-                    <Download size={14} />
-                    {t('playground.install')}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <PlaygroundInputBar
+          userTask={userTask}
+          onUserTaskChange={setUserTask}
+          isRunning={isRunning}
+          canRun={Boolean(userTask.trim())}
+          onRun={runSkill}
+          onStop={stopSkill}
+          runLabel={t('playground.run')}
+          stopLabel={t('playground.stop')}
+          inputPlaceholder={t('playground.describeTask')}
+          poweredByLabel={t('playground.poweredBy', { engine: t('playground.claudeCode') })}
+          onClose={onClose}
+          closeLabel={t('common.close')}
+          onInstall={onInstall}
+          installLabel={t('playground.install')}
+        />
       </div>
-    </div>
+    )
+
+  return (
+    <>
+      {/* Setup Wizard Modal */}
+      <SetupWizard
+        isOpen={showSetupWizard}
+        onClose={() => setShowSetupWizard(false)}
+        onComplete={() => {
+          setShowSetupWizard(false)
+          refreshDeps()
+        }}
+      />
+
+      {variant === 'modal' ? (
+        <Dialog open onOpenChange={(open) => (!open ? onClose?.() : undefined)}>
+          <DialogContent
+            showClose={false}
+            className="w-full max-w-5xl max-h-[85vh] p-0 overflow-hidden"
+          >
+            {content}
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <div className={`bg-background rounded-[8px] w-full h-full flex flex-col ${className ?? ''}`}>
+          {content}
+        </div>
+      )}
     </>
   )
 }

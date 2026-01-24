@@ -144,10 +144,10 @@ ${skill.description}
         .replace(/[^a-z0-9\s-]/g, '')
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
-        .trim() || skill.slug.split('-').slice(-1)[0] || 'skill'
+        .trim() || skill.slug.split('-').slice(-1)[0] || t('common.skillFallback')
       const filePath = await save({
         defaultPath: `${skillFolderName}-SKILL.md`,
-        filters: [{ name: 'Markdown', extensions: ['md'] }],
+        filters: [{ name: t('common.markdown'), extensions: ['md'] }],
       })
 
       if (filePath) {

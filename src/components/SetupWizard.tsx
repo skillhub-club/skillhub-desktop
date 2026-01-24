@@ -13,6 +13,9 @@ import { useNavigate } from 'react-router-dom'
 import { open } from '@tauri-apps/plugin-shell'
 import { useAppStore } from '../store'
 import { fetchWallet } from '../api/auth'
+import { Button } from './ui/button'
+import { Dialog, DialogContent } from './ui/dialog'
+import { Input } from './ui/input'
 
 import '@xterm/xterm/css/xterm.css'
 
@@ -402,8 +405,11 @@ export default function SetupWizard({ isOpen, onClose, onComplete }: SetupWizard
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-      <div className="bg-background border-2 border-foreground w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+    <Dialog open={isOpen} onOpenChange={(open) => (!open ? onClose() : undefined)}>
+      <DialogContent
+        showClose={false}
+        className="w-full max-w-2xl max-h-[85vh] p-0 overflow-hidden border-2 border-foreground flex flex-col"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b-2 border-foreground">
           <div>
@@ -417,12 +423,14 @@ export default function SetupWizard({ isOpen, onClose, onComplete }: SetupWizard
               {currentStep === 'complete' && t('setup.complete')}
             </p>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
           >
             <X size={20} />
-          </button>
+          </Button>
         </div>
 
         {/* Content */}
@@ -483,7 +491,7 @@ export default function SetupWizard({ isOpen, onClose, onComplete }: SetupWizard
               <div className="border-2 border-foreground overflow-hidden">
                 <div className="bg-[#0d1117] px-3 py-2 border-b border-gray-700 flex items-center gap-2">
                   <Terminal size={14} className="text-gray-400" />
-                  <span className="text-xs text-gray-400 font-medium">Terminal</span>
+                  <span className="text-xs text-gray-400 font-medium">{t('setup.terminal')}</span>
                 </div>
                 <div 
                   ref={terminalRef} 
@@ -500,17 +508,19 @@ export default function SetupWizard({ isOpen, onClose, onComplete }: SetupWizard
                     <div>
                       <p className="text-sm text-red-500 font-medium">{t('setup.installFailed')}</p>
                       <p className="text-xs text-red-400 mt-1">{installError}</p>
-                      <button
+                      <Button
                         onClick={() => {
                           const currentStepData = installSteps.find((s, i) => i === currentInstallIndex && !s.skip_reason)
                           if (currentStepData) {
                             showManualInstall(currentStepData.id)
                           }
                         }}
-                        className="mt-2 text-xs text-red-500 hover:underline flex items-center gap-1"
+                        variant="link"
+                        size="sm"
+                        className="h-auto px-0 text-xs text-red-500"
                       >
                         {t('setup.showManualInstructions')} <ChevronRight size={12} />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -521,12 +531,14 @@ export default function SetupWizard({ isOpen, onClose, onComplete }: SetupWizard
                 <div className="border-2 border-foreground bg-secondary/50 p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="text-sm font-bold text-foreground">{showManualInstructions.title}</h4>
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => setShowManualInstructions(null)}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
                     >
                       <X size={16} />
-                    </button>
+                    </Button>
                   </div>
                   <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
                     {showManualInstructions.instructions.map((instruction, i) => (
@@ -594,12 +606,12 @@ export default function SetupWizard({ isOpen, onClose, onComplete }: SetupWizard
                   {t('setup.apiKey')}
                 </label>
                 <div className="flex gap-2">
-                  <input
+                  <Input
                     type="text"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="sk-skillhubs-..."
-                    className="flex-1 px-4 py-3 border-2 border-foreground bg-background text-foreground font-mono text-sm focus:outline-none"
+                    placeholder={t('setup.apiKeyPlaceholder')}
+                    className="flex-1 h-auto px-4 py-3 border-2 border-foreground bg-background text-foreground font-mono text-sm rounded-none shadow-none focus-visible:ring-0"
                   />
                 </div>
                 {validationError && (
@@ -618,12 +630,14 @@ export default function SetupWizard({ isOpen, onClose, onComplete }: SetupWizard
                     <p className="text-xs text-muted-foreground/70 mb-2">
                       {t('setup.getApiKeySteps')}
                     </p>
-                    <button
+                    <Button
                       onClick={goToSettings}
-                      className="inline-flex items-center gap-1 text-sm font-bold text-foreground hover:underline"
+                      variant="link"
+                      size="sm"
+                      className="h-auto px-0 text-sm font-bold text-foreground"
                     >
                       {t('setup.goToSettings')} <ChevronRight size={14} />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -638,12 +652,14 @@ export default function SetupWizard({ isOpen, onClose, onComplete }: SetupWizard
                     <span className="flex-1 text-muted-foreground truncate">
                       export ANTHROPIC_BASE_URL="https://www.skillhub.club/api/v1/anthropic"
                     </span>
-                    <button 
+                    <Button
                       onClick={() => copyToClipboard('export ANTHROPIC_BASE_URL="https://www.skillhub.club/api/v1/anthropic"')}
-                      className="text-muted-foreground hover:text-foreground shrink-0"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-1 text-muted-foreground hover:text-foreground shrink-0"
                     >
                       {isCopied ? <Check size={14} /> : <Copy size={14} />}
-                    </button>
+                    </Button>
                   </div>
                   <div className="flex items-center gap-2 bg-background border border-border p-2 font-mono text-xs">
                     <span className="flex-1 text-muted-foreground truncate">
@@ -700,12 +716,14 @@ export default function SetupWizard({ isOpen, onClose, onComplete }: SetupWizard
                       <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">
                         {t('setup.insufficientBalance')}
                       </p>
-                      <button
+                      <Button
                         onClick={() => open(`${SKILLHUB_URL}/web/account/developer`)}
-                        className="text-xs font-bold uppercase text-foreground hover:underline flex items-center gap-1"
+                        variant="link"
+                        size="sm"
+                        className="h-auto px-0 text-xs font-bold uppercase text-foreground"
                       >
                         {t('setup.topUpWallet')} <ExternalLink size={12} />
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -713,13 +731,15 @@ export default function SetupWizard({ isOpen, onClose, onComplete }: SetupWizard
 
               {/* Reconfigure option */}
               {status?.config.api_key_set && (
-                <button
+                <Button
                   onClick={() => setCurrentStep('configure')}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto px-2 text-xs text-muted-foreground hover:text-foreground"
                 >
                   <Settings2 size={12} />
                   {t('setup.reconfigureApi')}
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -729,26 +749,29 @@ export default function SetupWizard({ isOpen, onClose, onComplete }: SetupWizard
         <div className="px-6 py-4 border-t-2 border-foreground flex items-center justify-between">
           <div>
             {currentStep === 'install' && (
-              <button
+              <Button
                 onClick={checkDependencies}
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                variant="ghost"
+                size="sm"
+                className="h-auto px-2 text-sm text-muted-foreground hover:text-foreground"
               >
                 <RefreshCw size={14} />
                 {t('setup.recheckDeps')}
-              </button>
+              </Button>
             )}
           </div>
           
           <div className="flex gap-3">
             {currentStep === 'install' && (
               <>
-                <button
+                <Button
                   onClick={onClose}
-                  className="px-4 py-2 border-2 border-foreground text-foreground font-semibold text-sm uppercase tracking-wide hover:bg-secondary transition-colors"
+                  variant="outline"
+                  className="px-4 py-2 border-2 border-foreground text-foreground font-semibold text-sm uppercase tracking-wide hover:bg-secondary"
                 >
                   {t('common.cancel')}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => {
                     const stepToRun = installSteps.find((s, i) => i >= currentInstallIndex && !s.skip_reason)
                     if (stepToRun) {
@@ -766,19 +789,20 @@ export default function SetupWizard({ isOpen, onClose, onComplete }: SetupWizard
                   ) : (
                     t('setup.installNow')
                   )}
-                </button>
+                </Button>
               </>
             )}
 
             {currentStep === 'configure' && (
               <>
-                <button
+                <Button
                   onClick={handleSkip}
-                  className="px-4 py-2 border-2 border-foreground text-foreground font-semibold text-sm uppercase tracking-wide hover:bg-secondary transition-colors"
+                  variant="outline"
+                  className="px-4 py-2 border-2 border-foreground text-foreground font-semibold text-sm uppercase tracking-wide hover:bg-secondary"
                 >
                   {t('setup.skipForNow')}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleConfigure}
                   disabled={!apiKey.trim() || isValidating || isConfiguring}
                   className="px-4 py-2 bg-foreground text-background font-semibold text-sm uppercase tracking-wide hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center gap-2"
@@ -791,22 +815,22 @@ export default function SetupWizard({ isOpen, onClose, onComplete }: SetupWizard
                   ) : (
                     t('setup.configure')
                   )}
-                </button>
+                </Button>
               </>
             )}
 
             {currentStep === 'complete' && (
-              <button
+              <Button
                 onClick={handleComplete}
                 className="px-6 py-2 bg-foreground text-background font-semibold text-sm uppercase tracking-wide hover:opacity-90 transition-opacity"
               >
                 {t('setup.startUsing')}
-              </button>
+              </Button>
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

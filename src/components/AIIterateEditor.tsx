@@ -11,6 +11,7 @@ import {
   ChevronUp,
 } from 'lucide-react'
 import MDEditor from '@uiw/react-md-editor'
+import { useTranslation } from 'react-i18next'
 import { useAppStore } from '../store'
 import { enhanceText, type EnhanceTextEvent } from '../api/skillhub'
 
@@ -29,16 +30,17 @@ interface HistoryEntry {
 type EditState = 'idle' | 'editing' | 'done'
 
 const QUICK_ACTIONS = [
-  { label: 'Expand', instruction: 'Expand this content with more details and examples' },
-  { label: 'Simplify', instruction: 'Simplify and make this more concise' },
-  { label: 'Add Examples', instruction: 'Add more code examples and use cases' },
-  { label: 'Improve Structure', instruction: 'Improve the structure and organization' },
-  { label: 'Fix Grammar', instruction: 'Fix any grammar or spelling issues' },
-  { label: 'Translate to English', instruction: 'Translate this to English' },
-  { label: 'Translate to Chinese', instruction: 'Translate this to Chinese (中文)' },
+  { labelKey: 'aiIterate.quickActions.expand', instructionKey: 'aiIterate.quickActions.expandInstruction' },
+  { labelKey: 'aiIterate.quickActions.simplify', instructionKey: 'aiIterate.quickActions.simplifyInstruction' },
+  { labelKey: 'aiIterate.quickActions.addExamples', instructionKey: 'aiIterate.quickActions.addExamplesInstruction' },
+  { labelKey: 'aiIterate.quickActions.improveStructure', instructionKey: 'aiIterate.quickActions.improveStructureInstruction' },
+  { labelKey: 'aiIterate.quickActions.fixGrammar', instructionKey: 'aiIterate.quickActions.fixGrammarInstruction' },
+  { labelKey: 'aiIterate.quickActions.translateEn', instructionKey: 'aiIterate.quickActions.translateEnInstruction' },
+  { labelKey: 'aiIterate.quickActions.translateZh', instructionKey: 'aiIterate.quickActions.translateZhInstruction' },
 ]
 
 export default function AIIterateEditor({ content, onApply, onClose }: AIIterateEditorProps) {
+  const { t } = useTranslation()
   const { isAuthenticated, accessToken, showToast, theme } = useAppStore()
 
   const [currentContent, setCurrentContent] = useState(content)
@@ -62,20 +64,20 @@ export default function AIIterateEditor({ content, onApply, onClose }: AIIterate
     if (history.length === 0 && content) {
       setHistory([{
         content,
-        instruction: 'Initial content',
+        instruction: t('aiIterate.initialContent'),
         timestamp: new Date(),
       }])
     }
-  }, [content, history.length])
+  }, [content, history.length, t])
 
   const handleEdit = async (editInstruction: string) => {
     if (!isAuthenticated || !accessToken) {
-      showToast('Please login to use AI editing', 'warning')
+      showToast(t('aiIterate.loginRequired'), 'warning')
       return
     }
 
     if (!editInstruction.trim()) {
-      showToast('Please enter an instruction', 'warning')
+      showToast(t('aiIterate.enterInstruction'), 'warning')
       return
     }
 
@@ -104,14 +106,14 @@ export default function AIIterateEditor({ content, onApply, onClose }: AIIterate
               break
             case 'error':
               setState('idle')
-              showToast(event.message || 'Edit failed', 'error')
+              showToast(event.message || t('aiIterate.editFailed'), 'error')
               break
           }
         }
       )
     } catch (err) {
       setState('idle')
-      showToast(err instanceof Error ? err.message : 'Edit failed', 'error')
+      showToast(err instanceof Error ? err.message : t('aiIterate.editFailed'), 'error')
     }
   }
 
@@ -120,7 +122,7 @@ export default function AIIterateEditor({ content, onApply, onClose }: AIIterate
       // Save to history
       setHistory(prev => [...prev, {
         content: previewContent,
-        instruction: instruction || 'Quick action',
+        instruction: instruction || t('aiIterate.quickActionLabel'),
         timestamp: new Date(),
       }])
       setCurrentContent(previewContent)
@@ -167,7 +169,7 @@ export default function AIIterateEditor({ content, onApply, onClose }: AIIterate
         <div className="flex items-center justify-between px-4 py-3 border-b-2 border-foreground bg-secondary">
           <div className="flex items-center gap-2">
             <Sparkles className="text-purple-500" size={20} />
-            <h2 className="text-lg font-bold uppercase tracking-wider">AI Edit Assistant</h2>
+            <h2 className="text-lg font-bold uppercase tracking-wider">{t('aiIterate.title')}</h2>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -177,13 +179,13 @@ export default function AIIterateEditor({ content, onApply, onClose }: AIIterate
               }`}
             >
               <History size={14} />
-              History ({history.length})
+              {t('aiIterate.historyCount', { count: history.length })}
             </button>
             <button
               onClick={handleUndo}
               disabled={history.length <= 1}
               className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
-              title="Undo"
+              title={t('aiIterate.undo')}
             >
               <RotateCcw size={16} />
             </button>
@@ -208,18 +210,18 @@ export default function AIIterateEditor({ content, onApply, onClose }: AIIterate
                     {state === 'editing' ? (
                       <>
                         <Loader2 className="animate-spin text-purple-500" size={16} />
-                        <span className="text-muted-foreground">Editing...</span>
+                        <span className="text-muted-foreground">{t('aiIterate.editing')}</span>
                       </>
                     ) : (
                       <>
                         <Check className="text-green-500" size={16} />
-                        <span className="text-green-600 font-medium">Edit complete</span>
+                        <span className="text-green-600 font-medium">{t('aiIterate.editComplete')}</span>
                       </>
                     )}
                   </div>
                   <div className="border border-purple-300 rounded-lg overflow-hidden">
                     <MDEditor.Markdown
-                      source={previewContent || 'Processing...'}
+                      source={previewContent || t('aiIterate.processing')}
                       style={{ padding: 16, background: 'var(--secondary)', minHeight: 300 }}
                     />
                   </div>
@@ -230,14 +232,14 @@ export default function AIIterateEditor({ content, onApply, onClose }: AIIterate
                         className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold rounded hover:bg-green-700 transition-colors"
                       >
                         <Check size={16} />
-                        Accept Changes
+                        {t('aiIterate.acceptChanges')}
                       </button>
                       <button
                         onClick={handleRevert}
                         className="flex items-center gap-2 px-4 py-2 border border-border text-muted-foreground hover:text-foreground rounded transition-colors"
                       >
                         <X size={16} />
-                        Discard
+                        {t('aiIterate.discard')}
                       </button>
                     </div>
                   )}
@@ -245,7 +247,7 @@ export default function AIIterateEditor({ content, onApply, onClose }: AIIterate
               ) : (
                 <div className="h-full">
                   <MDEditor.Markdown
-                    source={currentContent || '*No content yet*'}
+                    source={currentContent || t('aiIterate.noContent')}
                     style={{ background: 'transparent', minHeight: 300 }}
                   />
                 </div>
@@ -259,21 +261,22 @@ export default function AIIterateEditor({ content, onApply, onClose }: AIIterate
                   onClick={() => setShowQuickActions(!showQuickActions)}
                   className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2"
                 >
-                  Quick Actions
+                  {t('aiIterate.quickActionsTitle')}
                   {showQuickActions ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 </button>
                 {showQuickActions && (
                   <div className="flex flex-wrap gap-2">
                     {QUICK_ACTIONS.map(action => (
                       <button
-                        key={action.label}
+                        key={action.labelKey}
                         onClick={() => {
-                          setInstruction(action.instruction)
-                          handleEdit(action.instruction)
+                          const instructionText = t(action.instructionKey)
+                          setInstruction(instructionText)
+                          handleEdit(instructionText)
                         }}
                         className="px-3 py-1.5 text-xs font-semibold border border-border rounded hover:border-foreground hover:bg-secondary transition-colors"
                       >
-                        {action.label}
+                        {t(action.labelKey)}
                       </button>
                     ))}
                   </div>
@@ -289,7 +292,7 @@ export default function AIIterateEditor({ content, onApply, onClose }: AIIterate
                   value={instruction}
                   onChange={(e) => setInstruction(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Tell me how to improve this... (e.g., 'Add error handling examples')"
+                  placeholder={t('aiIterate.inputPlaceholder')}
                   className="flex-1 px-4 py-3 bg-background border-2 border-border rounded-lg resize-none focus:border-foreground focus:outline-none text-sm"
                   rows={2}
                   disabled={state === 'editing'}
@@ -308,7 +311,7 @@ export default function AIIterateEditor({ content, onApply, onClose }: AIIterate
               </div>
               {!isAuthenticated && (
                 <p className="text-xs text-yellow-600 mt-2">
-                  Please login to use AI editing
+                  {t('aiIterate.loginRequired')}
                 </p>
               )}
             </div>
@@ -319,7 +322,7 @@ export default function AIIterateEditor({ content, onApply, onClose }: AIIterate
             <div className="w-64 border-l-2 border-foreground overflow-y-auto bg-secondary">
               <div className="p-3 border-b border-border">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Edit History
+                  {t('aiIterate.editHistory')}
                 </h3>
               </div>
               <div className="divide-y divide-border">
@@ -345,21 +348,21 @@ export default function AIIterateEditor({ content, onApply, onClose }: AIIterate
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t-2 border-foreground bg-secondary">
           <p className="text-xs text-muted-foreground">
-            Press Enter to send • Shift+Enter for new line
+            {t('aiIterate.footerHint')}
           </p>
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
               className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleFinalApply}
               disabled={state === 'editing'}
               className="px-4 py-2 bg-foreground text-background font-semibold rounded hover:opacity-90 disabled:opacity-50 transition-colors"
             >
-              Apply to Editor
+              {t('aiIterate.applyToEditor')}
             </button>
           </div>
         </div>

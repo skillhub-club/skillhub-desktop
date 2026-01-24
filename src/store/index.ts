@@ -6,6 +6,9 @@ import type { ToastType } from '../components/Toast'
 export interface ToastData {
   message: string
   type: ToastType
+  actionLabel?: string
+  onAction?: () => void
+  duration?: number
 }
 
 export interface TokenData {
@@ -83,7 +86,11 @@ interface AppState {
   isLoading: boolean
   setIsLoading: (loading: boolean) => void
   toast: ToastData | null
-  showToast: (message: string, type?: ToastType) => void
+  showToast: (
+    message: string,
+    type?: ToastType,
+    options?: { actionLabel?: string; onAction?: () => void; duration?: number }
+  ) => void
   hideToast: () => void
   // Legacy support (will be removed)
   toastMessage: string | null
@@ -196,7 +203,7 @@ export const useAppStore = create<AppState>()(
       isLoading: false,
       setIsLoading: (loading) => set({ isLoading: loading }),
       toast: null,
-      showToast: (message, type = 'success') => set({ toast: { message, type } }),
+      showToast: (message, type = 'success', options) => set({ toast: { message, type, ...options } }),
       hideToast: () => set({ toast: null }),
       // Legacy support (will be removed)
       toastMessage: null,
