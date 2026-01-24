@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X, Users, Star, ExternalLink, Loader2 } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
 import { getKolDetail, type KolUser, type KolDetailResponse } from '../api/skillhub'
@@ -16,6 +17,7 @@ interface KolDetailProps {
 const SKILLHUB_URL = import.meta.env.VITE_SKILLHUB_API_URL || 'https://www.skillhub.club'
 
 export default function KolDetail({ kol, onClose, onInstallSkill, onViewSkill }: KolDetailProps) {
+  const { t } = useTranslation()
   const [detail, setDetail] = useState<KolDetailResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -31,8 +33,9 @@ export default function KolDetail({ kol, onClose, onInstallSkill, onViewSkill }:
       })
       .catch(err => {
         console.error('Failed to load KOL detail:', err)
-        setError('Failed to load KOL details')
-        showToast('Failed to load KOL details', 'error')
+        const message = t('kolDetail.failedToLoad')
+        setError(message)
+        showToast(message, 'error')
       })
       .finally(() => setLoading(false))
   }, [kol.githubUsername, showToast])
@@ -74,11 +77,11 @@ export default function KolDetail({ kol, onClose, onInstallSkill, onViewSkill }:
               <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground uppercase tracking-wider">
                 <span className="flex items-center gap-1">
                   <Users size={12} />
-                  {kol.githubFollowers.toLocaleString()} followers
+                  {t('kolDetail.followersCount', { count: kol.githubFollowers })}
                 </span>
                 <span className="flex items-center gap-1">
                   <Star size={12} />
-                  {detail?.user?.stats?.totalStars?.toLocaleString() || kol.skillCount} stars
+                  {t('kolDetail.starsCount', { count: detail?.user?.stats?.totalStars || kol.skillCount })}
                 </span>
               </div>
             </div>
@@ -87,7 +90,7 @@ export default function KolDetail({ kol, onClose, onInstallSkill, onViewSkill }:
             <button
               onClick={openProfile}
               className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-              title="View on SkillHub"
+              title={t('kolDetail.viewOnSkillHub')}
             >
               <ExternalLink size={20} />
             </button>
@@ -110,7 +113,7 @@ export default function KolDetail({ kol, onClose, onInstallSkill, onViewSkill }:
         {/* Skills */}
         <div className="flex-1 overflow-y-auto p-4">
           <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">
-            Skills by {kol.displayName}
+            {t('kolDetail.skillsBy', { name: kol.displayName })}
           </h3>
 
           {loading ? (
@@ -135,7 +138,7 @@ export default function KolDetail({ kol, onClose, onInstallSkill, onViewSkill }:
             </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground">
-              No skills found
+              {t('kolDetail.noSkillsFound')}
             </div>
           )}
 
@@ -146,7 +149,7 @@ export default function KolDetail({ kol, onClose, onInstallSkill, onViewSkill }:
                 className="btn btn-secondary"
               >
                 <ExternalLink size={18} />
-                View all skills on SkillHub
+                {t('kolDetail.viewAllSkills')}
               </button>
             </div>
           )}
@@ -155,7 +158,7 @@ export default function KolDetail({ kol, onClose, onInstallSkill, onViewSkill }:
         {/* Footer */}
         <div className="p-4 border-t-2 border-border-light">
           <p className="text-xs text-muted-foreground text-center uppercase tracking-wider">
-            {detail?.pagination?.total || kol.skillCount} skills total
+            {t('kolDetail.skillsTotal', { count: detail?.pagination?.total || kol.skillCount })}
           </p>
         </div>
       </div>

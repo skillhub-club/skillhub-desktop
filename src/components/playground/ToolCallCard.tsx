@@ -26,6 +26,7 @@ import {
   GitBranch,
 } from 'lucide-react'
 import { Spinner } from './Spinner'
+import { Button } from '../ui/button'
 
 export type ToolStatus = 'running' | 'completed' | 'error'
 
@@ -108,9 +109,11 @@ export const ToolCallCard = memo(function ToolCallCard({
   return (
     <div className={`rounded-lg border border-border-light bg-secondary overflow-hidden ${className}`}>
       {/* Header - always visible */}
-      <button
+      <Button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-background transition-colors text-left"
+        variant="ghost"
+        size="sm"
+        className="w-full h-auto justify-start gap-2 px-3 py-2 hover:bg-background text-left"
       >
         {/* Expand chevron */}
         <ChevronRight
@@ -141,7 +144,7 @@ export const ToolCallCard = memo(function ToolCallCard({
             {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </span>
         )}
-      </button>
+      </Button>
 
       {/* Expanded content */}
       {isExpanded && (

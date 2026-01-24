@@ -132,7 +132,7 @@ export default function SkillsExplorer({ tool, onClose, directPath, title }: Ski
   
   // Use directPath if provided, otherwise use tool's default paths
   const explorePath = directPath || tool.skills_path
-  const displayTitle = title || `Skills Explorer - ${tool.name}`
+  const displayTitle = title || t('explorer.title', { tool: tool.name })
 
   // Filter tree to only show skills-related directories
   const filterSkillsTree = (node: FileNode, allowedDirs: string[]): FileNode | null => {
@@ -228,7 +228,7 @@ export default function SkillsExplorer({ tool, onClose, directPath, title }: Ski
 
   const handleDelete = async () => {
     if (!selectedNode || !canModify || deleting) return
-    if (!window.confirm(`Delete "${selectedNode.name}"?`)) return
+    if (!window.confirm(t('skillsExplorer.confirmDelete', { name: selectedNode.name }))) return
     setDeleting(true)
     try {
       await invoke('uninstall_skill', { skillPath: selectedNode.path })
@@ -248,7 +248,7 @@ export default function SkillsExplorer({ tool, onClose, directPath, title }: Ski
       const dest = await openDialog({
         directory: true,
         multiple: false,
-        title: 'Select destination folder',
+        title: t('explorer.selectDestination'),
       })
       if (!dest || typeof dest !== 'string') return
       await invoke('copy_skill', { sourcePath: selectedNode.path, destDir: dest })
@@ -285,7 +285,7 @@ export default function SkillsExplorer({ tool, onClose, directPath, title }: Ski
                   onClick={handleMove}
                   disabled={moving || deleting}
                   className="p-2 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
-                  title="Move"
+                  title={t('explorer.move')}
                 >
                   <ArrowRightLeft size={18} />
                 </button>
@@ -293,7 +293,7 @@ export default function SkillsExplorer({ tool, onClose, directPath, title }: Ski
                   onClick={handleDelete}
                   disabled={moving || deleting}
                   className="p-2 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
-                  title="Delete"
+                  title={t('explorer.delete')}
                 >
                   <Trash2 size={18} />
                 </button>

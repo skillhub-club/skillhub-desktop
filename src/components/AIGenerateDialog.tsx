@@ -5,6 +5,7 @@ import { useAppStore } from '../store'
 import { generateSkill, type GenerateSkillEvent, installSkill, detectTools } from '../api/skillhub'
 import { invoke } from '@tauri-apps/api/core'
 import ToolSelector from './ToolSelector'
+import { useTranslation } from 'react-i18next'
 
 interface AIGenerateDialogProps {
   open: boolean
@@ -16,21 +17,21 @@ interface AIGenerateDialogProps {
 type GenerationState = 'idle' | 'generating' | 'done' | 'error'
 
 const LANGUAGES = [
-  { value: 'en', label: 'English' },
-  { value: 'zh', label: '中文' },
+  { value: 'en', labelKey: 'aiGenerate.languages.en' },
+  { value: 'zh', labelKey: 'aiGenerate.languages.zh' },
 ]
 
 const CATEGORIES = [
-  { value: 'development', label: 'Development' },
-  { value: 'devops', label: 'DevOps' },
-  { value: 'testing', label: 'Testing' },
-  { value: 'documentation', label: 'Documentation' },
-  { value: 'ai-ml', label: 'AI/ML' },
-  { value: 'frontend', label: 'Frontend' },
-  { value: 'backend', label: 'Backend' },
-  { value: 'security', label: 'Security' },
-  { value: 'productivity', label: 'Productivity' },
-  { value: 'other', label: 'Other' },
+  { value: 'development', labelKey: 'aiGenerate.categories.development' },
+  { value: 'devops', labelKey: 'aiGenerate.categories.devops' },
+  { value: 'testing', labelKey: 'aiGenerate.categories.testing' },
+  { value: 'documentation', labelKey: 'aiGenerate.categories.documentation' },
+  { value: 'ai-ml', labelKey: 'aiGenerate.categories.aiMl' },
+  { value: 'frontend', labelKey: 'aiGenerate.categories.frontend' },
+  { value: 'backend', labelKey: 'aiGenerate.categories.backend' },
+  { value: 'security', labelKey: 'aiGenerate.categories.security' },
+  { value: 'productivity', labelKey: 'aiGenerate.categories.productivity' },
+  { value: 'other', labelKey: 'aiGenerate.categories.other' },
 ]
 
 export default function AIGenerateDialog({
@@ -39,6 +40,7 @@ export default function AIGenerateDialog({
   onApply,
   category,
 }: AIGenerateDialogProps) {
+  const { t } = useTranslation()
   const { 
     isAuthenticated, 
     accessToken, 
@@ -91,12 +93,12 @@ export default function AIGenerateDialog({
 
   const handleGenerate = async () => {
     if (!isAuthenticated || !accessToken) {
-      showToast('Please login to use AI generation', 'warning')
+      showToast(t('aiGenerate.loginRequiredToast'), 'warning')
       return
     }
 
     if (description.trim().length < 10) {
-      setError('Please describe your skill in more detail (at least 10 characters)')
+      setError(t('aiGenerate.describeTooShort'))
       return
     }
 
@@ -142,7 +144,7 @@ export default function AIGenerateDialog({
               break
             case 'error':
               setState('error')
-              setError(event.message || 'Generation failed')
+              setError(event.message || t('aiGenerate.generationFailed'))
               break
           }
         },
@@ -155,7 +157,7 @@ export default function AIGenerateDialog({
         contentRef.current = ''
       } else {
         setState('error')
-        setError(err instanceof Error ? err.message : 'Generation failed')
+        setError(err instanceof Error ? err.message : t('aiGenerate.generationFailed'))
       }
     } finally {
       abortControllerRef.current = null
@@ -193,7 +195,7 @@ export default function AIGenerateDialog({
 
   const handleInstall = async () => {
     if (!generatedContent || selectedToolIds.length === 0) {
-      showToast('Please select at least one tool', 'warning')
+      showToast(t('aiGenerate.selectToolWarning'), 'warning')
       return
     }
 
@@ -211,11 +213,11 @@ export default function AIGenerateDialog({
             toolId,
           })
         }
-        showToast(`Installed "${skillName}" to project`, 'success')
+        showToast(t('aiGenerate.installedToProject', { name: skillName }), 'success')
       } else {
         // Install to personal (global) directory
         await installSkill(generatedContent, skillName, selectedToolIds)
-        showToast(`Installed "${skillName}" to ${selectedToolIds.length} tool(s)`, 'success')
+        showToast(t('aiGenerate.installedToTools', { name: skillName, count: selectedToolIds.length }), 'success')
       }
 
       // Refresh tools to update counts
@@ -225,7 +227,7 @@ export default function AIGenerateDialog({
       onClose()
     } catch (err) {
       console.error('Install failed:', err)
-      showToast(err instanceof Error ? err.message : 'Install failed', 'error')
+      showToast(err instanceof Error ? err.message : t('aiGenerate.installFailed'), 'error')
     } finally {
       setInstalling(false)
     }
@@ -252,7 +254,7 @@ export default function AIGenerateDialog({
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2">
             <Sparkles className="text-blue-500" size={20} />
-            <h2 className="text-lg font-semibold text-foreground">AI Skill Generator</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t('aiGenerate.title')}</h2>
           </div>
           <button
             onClick={handleCancel}
@@ -269,8 +271,8 @@ export default function AIGenerateDialog({
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 flex items-start gap-2">
               <AlertCircle className="text-yellow-500 flex-shrink-0 mt-0.5" size={18} />
               <div className="text-sm">
-                <p className="font-medium text-yellow-600 dark:text-yellow-400">Login required</p>
-                <p className="text-yellow-700 dark:text-yellow-300/80">Please login to use AI skill generation. Free users get 1 generation per day.</p>
+                <p className="font-medium text-yellow-600 dark:text-yellow-400">{t('common.loginRequired')}</p>
+                <p className="text-yellow-700 dark:text-yellow-300/80">{t('aiGenerate.loginRequiredDesc')}</p>
               </div>
             </div>
           )}
@@ -280,24 +282,24 @@ export default function AIGenerateDialog({
             <>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Describe your skill *
+                  {t('aiGenerate.describeLabel')}
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="e.g., A skill that helps generate TypeScript React components with proper types and hooks..."
+                  placeholder={t('aiGenerate.describePlaceholder')}
                   className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none h-32 text-foreground placeholder:text-muted-foreground"
                   disabled={!isAuthenticated}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Be specific about what you want the skill to do, include examples if helpful.
+                  {t('aiGenerate.describeHelp')}
                 </p>
               </div>
 
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-foreground mb-1">
-                    Output Language
+                    {t('aiGenerate.outputLanguage')}
                   </label>
                   <select
                     value={language}
@@ -307,14 +309,14 @@ export default function AIGenerateDialog({
                   >
                     {LANGUAGES.map((lang) => (
                       <option key={lang.value} value={lang.value}>
-                        {lang.label}
+                        {t(lang.labelKey)}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-foreground mb-1">
-                    Category
+                    {t('aiGenerate.category')}
                   </label>
                   <select
                     value={selectedCategory}
@@ -324,7 +326,7 @@ export default function AIGenerateDialog({
                   >
                     {CATEGORIES.map((cat) => (
                       <option key={cat.value} value={cat.value}>
-                        {cat.label}
+                        {t(cat.labelKey)}
                       </option>
                     ))}
                   </select>
@@ -341,15 +343,15 @@ export default function AIGenerateDialog({
                   {state === 'generating' && (
                     <>
                       <Loader2 className="animate-spin text-blue-500" size={18} />
-                      <span className="text-sm text-muted-foreground">Generating...</span>
+                      <span className="text-sm text-muted-foreground">{t('aiGenerate.generating')}</span>
                     </>
                   )}
                   {state === 'done' && (
                     <span className="text-sm text-green-600 dark:text-green-400 font-medium">
-                      Generation complete
+                      {t('aiGenerate.generationComplete')}
                       {dailyRemaining !== null && (
                         <span className="text-muted-foreground font-normal ml-2">
-                          ({dailyRemaining} remaining today)
+                          {t('aiGenerate.remainingToday', { count: dailyRemaining })}
                         </span>
                       )}
                     </span>
@@ -362,14 +364,14 @@ export default function AIGenerateDialog({
                       className="flex items-center gap-1 px-2 py-1 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
                     >
                       {copied ? <Check size={14} /> : <Copy size={14} />}
-                      {copied ? 'Copied' : 'Copy'}
+                      {copied ? t('aiGenerate.copied') : t('aiGenerate.copy')}
                     </button>
                     <button
                       onClick={handleRegenerate}
                       className="flex items-center gap-1 px-2 py-1 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
                     >
                       <RotateCcw size={14} />
-                      Regenerate
+                      {t('aiGenerate.regenerate')}
                     </button>
                   </div>
                 )}
@@ -377,7 +379,7 @@ export default function AIGenerateDialog({
 
               <div data-color-mode={theme} className="border border-border rounded-lg overflow-hidden">
                 <MDEditor.Markdown
-                  source={generatedContent || 'Waiting for content...'}
+                  source={generatedContent || t('aiGenerate.waiting')}
                   style={{
                     padding: 16,
                     background: 'var(--secondary)',
@@ -402,7 +404,7 @@ export default function AIGenerateDialog({
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-start gap-2">
               <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
               <div className="text-sm">
-                <p className="font-medium text-red-600 dark:text-red-400">Error</p>
+                <p className="font-medium text-red-600 dark:text-red-400">{t('common.error')}</p>
                 <p className="text-red-700 dark:text-red-300/80">{error}</p>
               </div>
             </div>
@@ -412,14 +414,14 @@ export default function AIGenerateDialog({
         {/* Footer */}
         <div className="px-4 py-3 border-t border-border flex justify-between items-center bg-muted/50 rounded-b-xl">
           <p className="text-xs text-muted-foreground">
-            Free users: 1/day | Pro users: 19/day
+            {t('aiGenerate.quotaHint')}
           </p>
           <div className="flex gap-2">
             <button
               onClick={handleCancel}
               className="px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
             >
-              {state === 'generating' ? 'Stop' : 'Cancel'}
+              {state === 'generating' ? t('aiGenerate.stop') : t('common.cancel')}
             </button>
             {state === 'idle' && (
               <button
@@ -428,7 +430,7 @@ export default function AIGenerateDialog({
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Sparkles size={16} />
-                Generate
+                {t('aiGenerate.generate')}
               </button>
             )}
             {state === 'done' && (
@@ -437,7 +439,7 @@ export default function AIGenerateDialog({
                   onClick={handleApply}
                   className="px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
                 >
-                  Apply to Editor
+                  {t('aiGenerate.applyToEditor')}
                 </button>
                 <button
                   onClick={handleInstall}
@@ -449,7 +451,7 @@ export default function AIGenerateDialog({
                   ) : (
                     <Download size={16} />
                   )}
-                  {installing ? 'Installing...' : 'Install Locally'}
+                  {installing ? t('aiGenerate.installing') : t('aiGenerate.installLocally')}
                 </button>
               </>
             )}

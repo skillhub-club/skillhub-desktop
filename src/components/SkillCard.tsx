@@ -55,7 +55,7 @@ export default function SkillCard({
   selected = false,
   onSelect,
 }: SkillCardProps) {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   
   // Select description based on current language
   const description = i18n.language === 'zh' && skill.description_zh 
@@ -98,7 +98,7 @@ export default function SkillCard({
           />
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-foreground/10 via-secondary to-background flex items-center justify-center text-[11px] uppercase tracking-wider text-muted-foreground">
-            No cover
+            {t('skillCard.noCover')}
           </div>
         )}
         {showPreviewButton && onView && (
@@ -109,7 +109,7 @@ export default function SkillCard({
             }}
             className="absolute bottom-2 right-2 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider bg-background/90 border border-border-light hover:border-foreground hover:bg-background transition-colors"
           >
-            Preview
+            {t('skillCard.preview')}
           </button>
         )}
       </div>
@@ -122,12 +122,14 @@ export default function SkillCard({
             {skill.is_aggregator && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded flex-shrink-0">
                 <Library size={10} />
-                Collection
+                {t('skillCard.collection')}
               </span>
             )}
           </div>
           <p className="text-xs text-muted-foreground uppercase tracking-wider truncate">
-            {meta?.ownerName ? `by ${meta.ownerName}` : `by ${skill.author}`}
+            {meta?.ownerName
+              ? t('skillCard.by', { name: meta.ownerName })
+              : t('skillCard.by', { name: skill.author })}
           </p>
         </div>
         {skill.simple_rating && (
@@ -156,13 +158,13 @@ export default function SkillCard({
         {meta?.views !== undefined && (
           <span className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground">
             <Eye size={12} />
-            {meta.views.toLocaleString()} views
+            {t('skillCard.views', { count: meta.views })}
           </span>
         )}
         {meta?.downloads !== undefined && (
           <span className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground">
             <Download size={12} />
-            {meta.downloads.toLocaleString()} installs
+            {t('skillCard.installs', { count: meta.downloads })}
           </span>
         )}
       </div>
@@ -178,7 +180,7 @@ export default function SkillCard({
                   onView(skill)
                 }}
                 className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                title="View Details"
+                title={t('skillCard.viewDetails')}
               >
                 <Eye size={16} />
               </button>
@@ -190,7 +192,7 @@ export default function SkillCard({
                   }}
                   className="btn btn-secondary px-3 py-1.5 text-xs uppercase tracking-wider"
                 >
-                  Preview
+                  {t('skillCard.preview')}
                 </button>
               )}
             </>
@@ -203,7 +205,7 @@ export default function SkillCard({
               open(`${skillhubUrl}${path.startsWith('/') ? '' : '/'}${path}`).catch(console.error)
             }}
             className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-            title="View on SkillHub"
+            title={t('skillCard.viewOnSkillHub')}
           >
             <ExternalLink size={16} />
           </button>
@@ -221,7 +223,7 @@ export default function SkillCard({
           ) : (
             <Download size={14} />
           )}
-          <span>{installing ? '...' : 'Install'}</span>
+          <span>{installing ? t('skillCard.installing') : t('skillCard.install')}</span>
         </button>
       </div>
       </div>

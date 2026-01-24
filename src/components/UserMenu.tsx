@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { LogIn, LogOut, User, Heart, ChevronDown } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
 import { useAppStore } from '../store'
@@ -9,6 +10,7 @@ interface UserMenuProps {
 }
 
 export default function UserMenu({ collapsed = false }: UserMenuProps) {
+  const { t } = useTranslation()
   const { isAuthenticated, user, login, logout, showToast, setFavorites, setCollections } = useAppStore()
   const [showMenu, setShowMenu] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
@@ -23,7 +25,7 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
       setShowLoginModal(true)
     } catch (error) {
       console.error('Failed to open browser:', error)
-      showToast('Failed to open browser for login', 'error')
+      showToast(t('userMenu.openBrowserFailed'), 'error')
     }
   }
 
@@ -44,7 +46,7 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
       })
 
       if (!userResponse.ok) {
-        throw new Error('Failed to get user info')
+        throw new Error(t('userMenu.userInfoFailed'))
       }
 
       const userData = await userResponse.json()
@@ -78,10 +80,11 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
 
       setShowLoginModal(false)
       setLoginCode('')
-      showToast(`Welcome, ${userData.name || userData.github_username}!`, 'success')
+      const displayName = userData.name || userData.github_username || t('userMenu.userFallback')
+      showToast(t('userMenu.welcome', { name: displayName }), 'success')
     } catch (error) {
       console.error('Login failed:', error)
-      showToast('Login failed. Please try again.', 'error')
+      showToast(t('userMenu.loginFailed'), 'error')
     } finally {
       setIsLoggingIn(false)
     }
@@ -90,7 +93,7 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
   const handleLogout = () => {
     logout()
     setShowMenu(false)
-    showToast('Logged out successfully', 'info')
+    showToast(t('userMenu.loggedOut'), 'info')
   }
 
   if (!isAuthenticated) {
@@ -98,25 +101,25 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
       <>
         <button
           onClick={handleLoginClick}
-          title={collapsed ? 'Sign in' : undefined}
+          title={collapsed ? t('userMenu.signIn') : undefined}
           className={`flex items-center ${collapsed ? 'justify-center p-3' : 'gap-2 px-3 py-2.5'} w-full text-sm font-semibold uppercase tracking-wider text-foreground hover:bg-background border-2 border-transparent hover:border-foreground transition-all`}
         >
           <LogIn size={18} />
-          {!collapsed && <span>Sign in</span>}
+          {!collapsed && <span>{t('userMenu.signIn')}</span>}
         </button>
 
         {/* Login Modal */}
         {showLoginModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-background border-2 border-foreground p-6 w-full max-w-sm mx-4">
-              <h2 className="text-xl font-bold mb-2 tracking-tight">SIGN IN</h2>
+              <h2 className="text-xl font-bold mb-2 tracking-tight">{t('userMenu.signInTitle')}</h2>
               <p className="text-muted-foreground text-sm mb-4">
-                A browser window has opened. After signing in, enter the code shown:
+                {t('userMenu.enterCodeDesc')}
               </p>
 
               <input
                 type="text"
-                placeholder="Enter code"
+                placeholder={t('userMenu.enterCodePlaceholder')}
                 value={loginCode}
                 onChange={(e) => setLoginCode(e.target.value)}
                 className="input text-center text-2xl font-mono tracking-widest mb-4"
@@ -131,14 +134,14 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
                   }}
                   className="btn btn-secondary flex-1"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleCodeSubmit}
                   disabled={isLoggingIn || !loginCode.trim()}
                   className="btn btn-primary flex-1 disabled:opacity-50"
                 >
-                  {isLoggingIn ? 'Signing in...' : 'Sign in'}
+                  {isLoggingIn ? t('userMenu.signingIn') : t('userMenu.signIn')}
                 </button>
               </div>
             </div>
@@ -152,7 +155,7 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
     <div className="relative">
       <button
         onClick={() => setShowMenu(!showMenu)}
-        title={collapsed ? (user?.name || user?.github_username || 'User') : undefined}
+        title={collapsed ? (user?.name || user?.github_username || t('userMenu.userFallback')) : undefined}
         className={`flex items-center ${collapsed ? 'justify-center p-2' : 'gap-2 px-3 py-2'} w-full hover:bg-background border-2 border-transparent hover:border-foreground transition-all`}
       >
         {user?.avatar_url ? (
@@ -166,7 +169,7 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
           <>
             <div className="flex-1 text-left">
               <p className="text-sm font-bold text-foreground truncate">
-                {user?.name || user?.github_username || 'User'}
+                {user?.name || user?.github_username || t('userMenu.userFallback')}
               </p>
             </div>
             <ChevronDown size={16} className="text-muted-foreground" />
@@ -190,14 +193,14 @@ export default function UserMenu({ collapsed = false }: UserMenuProps) {
               onClick={() => setShowMenu(false)}
             >
               <Heart size={16} />
-              My Favorites
+              {t('userMenu.myFavorites')}
             </a>
             <button
               onClick={handleLogout}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm font-semibold uppercase tracking-wider text-red-600 hover:bg-red-50 dark:hover:bg-red-950 whitespace-nowrap"
             >
               <LogOut size={16} />
-              Sign out
+              {t('userMenu.signOut')}
             </button>
           </div>
         </>

@@ -14,6 +14,7 @@ import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { Copy, Check } from 'lucide-react'
+import { Button } from '../ui/button'
 
 export interface AssistantMessageProps {
   /** Message content (supports Markdown) */
@@ -70,17 +71,19 @@ function CopyButton({ text, size = 'md' }: { text: string; size?: 'sm' | 'md' })
   const iconSize = size === 'sm' ? 12 : 14
 
   return (
-    <button
+    <Button
       onClick={handleCopy}
-      className={`flex items-center gap-1 rounded-md transition-all
-                  ${copied 
-                    ? 'bg-[var(--success)]/20 text-[var(--success)]' 
-                    : 'bg-background/80 text-muted-foreground hover:text-foreground hover:bg-background'}
-                  ${sizeClasses}`}
+      variant="ghost"
+      size="sm"
+      className={`h-auto flex items-center gap-1 rounded-md transition-all ${sizeClasses} ${
+        copied
+          ? 'bg-[var(--success)]/20 text-[var(--success)]'
+          : 'bg-background/80 text-muted-foreground hover:text-foreground hover:bg-background'
+      }`}
       title={t('common.copy')}
     >
       {copied ? <Check size={iconSize} /> : <Copy size={iconSize} />}
-    </button>
+    </Button>
   )
 }
 

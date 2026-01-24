@@ -17,6 +17,7 @@ import { open } from '@tauri-apps/plugin-shell'
 import { useAppStore } from '../store'
 import ToolSelector from '../components/ToolSelector'
 import SkillCard from '../components/SkillCard'
+import { useTranslation } from 'react-i18next'
 import {
   detectTools,
   getSkillFilesForVersion,
@@ -30,24 +31,24 @@ import type { MarketplaceSkill, MarketplaceSortOption, SkillHubSkill } from '../
 const PAGE_SIZE = 12
 
 const CATEGORY_OPTIONS = [
-  { id: 'all', label: 'All' },
-  { id: 'development', label: 'Development' },
-  { id: 'devops', label: 'DevOps' },
-  { id: 'testing', label: 'Testing' },
-  { id: 'documentation', label: 'Documentation' },
-  { id: 'ai-ml', label: 'AI/ML' },
-  { id: 'frontend', label: 'Frontend' },
-  { id: 'backend', label: 'Backend' },
-  { id: 'security', label: 'Security' },
-  { id: 'other', label: 'Other' },
+  { id: 'all', labelKey: 'marketplacePage.categories.all' },
+  { id: 'development', labelKey: 'marketplacePage.categories.development' },
+  { id: 'devops', labelKey: 'marketplacePage.categories.devops' },
+  { id: 'testing', labelKey: 'marketplacePage.categories.testing' },
+  { id: 'documentation', labelKey: 'marketplacePage.categories.documentation' },
+  { id: 'ai-ml', labelKey: 'marketplacePage.categories.aiMl' },
+  { id: 'frontend', labelKey: 'marketplacePage.categories.frontend' },
+  { id: 'backend', labelKey: 'marketplacePage.categories.backend' },
+  { id: 'security', labelKey: 'marketplacePage.categories.security' },
+  { id: 'other', labelKey: 'marketplacePage.categories.other' },
 ]
 
-const SORT_OPTIONS: { id: MarketplaceSortOption; label: string }[] = [
-  { id: 'published_at_desc', label: 'Newest' },
-  { id: 'updated_at_desc', label: 'Recently Updated' },
-  { id: 'views_desc', label: 'Most Viewed' },
-  { id: 'downloads_desc', label: 'Most Downloaded' },
-  { id: 'name_asc', label: 'Name A-Z' },
+const SORT_OPTIONS: { id: MarketplaceSortOption; labelKey: string }[] = [
+  { id: 'published_at_desc', labelKey: 'marketplacePage.sort.newest' },
+  { id: 'updated_at_desc', labelKey: 'marketplacePage.sort.recentlyUpdated' },
+  { id: 'views_desc', labelKey: 'marketplacePage.sort.mostViewed' },
+  { id: 'downloads_desc', labelKey: 'marketplacePage.sort.mostDownloaded' },
+  { id: 'name_asc', labelKey: 'marketplacePage.sort.nameAz' },
 ]
 
 type SkillCardAdapted = SkillHubSkill & {
@@ -71,6 +72,7 @@ function toSkillCardSkill(skill: MarketplaceSkill): SkillCardAdapted {
 }
 
 export default function Marketplace() {
+  const { t } = useTranslation()
   const {
     isAuthenticated,
     accessToken,
@@ -159,8 +161,8 @@ export default function Marketplace() {
       .catch((err) => {
         console.error('Failed to load marketplace:', err)
         setSkills([])
-        setError(err instanceof Error ? err.message : 'Failed to load marketplace')
-        showToast('Failed to load marketplace', 'error')
+        setError(err instanceof Error ? err.message : t('marketplacePage.failedToLoad'))
+        showToast(t('marketplacePage.failedToLoad'), 'error')
       })
       .finally(() => setLoading(false))
   }, [
@@ -184,7 +186,7 @@ export default function Marketplace() {
 
   const handleViewSkill = async (skill: MarketplaceSkill) => {
     if (!accessToken) {
-      showToast('Please sign in to view this skill', 'warning')
+      showToast(t('marketplacePage.signInToView'), 'warning')
       return
     }
 
@@ -203,7 +205,7 @@ export default function Marketplace() {
       }
     } catch (err) {
       console.error('Failed to load skill files:', err)
-      showToast('Failed to load skill files', 'error')
+      showToast(t('marketplacePage.failedToLoadFiles'), 'error')
     } finally {
       setLoadingSkillContent(false)
     }
@@ -213,11 +215,11 @@ export default function Marketplace() {
     if (installing) return
     if (!viewingSkill) return
     if (!skillContent) {
-      showToast('Skill content not loaded yet', 'warning')
+      showToast(t('marketplacePage.contentNotLoaded'), 'warning')
       return
     }
     if (selectedToolIds.length === 0) {
-      showToast('Please select at least one tool', 'warning')
+      showToast(t('marketplacePage.selectToolWarning'), 'warning')
       return
     }
 
@@ -239,10 +241,10 @@ export default function Marketplace() {
           projectPath,
           selectedToolIds
         )
-        showToast(`Installed "${viewingSkill.name}" to project`, 'success')
+        showToast(t('marketplacePage.installedToProject', { name: viewingSkill.name }), 'success')
       } else {
         await installSkill(skillContent, safeName, selectedToolIds)
-        showToast(`Installed "${viewingSkill.name}" to ${selectedToolIds.length} tool(s)`, 'success')
+        showToast(t('marketplacePage.installedToTools', { name: viewingSkill.name, count: selectedToolIds.length }), 'success')
       }
 
       // Refresh tool state to update counts
@@ -250,7 +252,7 @@ export default function Marketplace() {
       setTools(newTools)
     } catch (err) {
       console.error('Installation failed:', err)
-      showToast('Installation failed', 'error')
+      showToast(t('marketplacePage.installFailed'), 'error')
     } finally {
       setInstalling(false)
     }
@@ -262,7 +264,7 @@ export default function Marketplace() {
       setShowLoginModal(true)
     } catch (error) {
       console.error('Failed to open browser:', error)
-      showToast('Failed to open browser for login', 'error')
+      showToast(t('marketplacePage.openBrowserFailed'), 'error')
     }
   }
 
@@ -278,7 +280,7 @@ export default function Marketplace() {
       })
 
       if (!userResponse.ok) {
-        throw new Error('Failed to get user info')
+        throw new Error(t('marketplacePage.failedToGetUserInfo'))
       }
 
       const userData = await userResponse.json()
@@ -310,10 +312,11 @@ export default function Marketplace() {
 
       setShowLoginModal(false)
       setLoginCode('')
-      showToast(`Welcome, ${userData.name || userData.github_username || 'SkillHub user'}!`, 'success')
+      const displayName = userData.name || userData.github_username || t('marketplacePage.userFallback')
+      showToast(t('marketplacePage.welcome', { name: displayName }), 'success')
     } catch (error) {
       console.error('Login failed:', error)
-      showToast('Login failed. Please try again.', 'error')
+      showToast(t('marketplacePage.loginFailed'), 'error')
     } finally {
       setLoggingIn(false)
     }
@@ -324,24 +327,24 @@ export default function Marketplace() {
       <div className="max-w-xl text-center space-y-5">
         <div className="inline-flex items-center gap-3 px-4 py-2 border-2 border-foreground bg-secondary uppercase tracking-wider text-sm font-semibold">
           <Store size={18} />
-          Marketplace
+          {t('marketplacePage.title')}
         </div>
-        <h1 className="text-4xl font-bold tracking-tight text-foreground">Sign in to explore user-hosted skills</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-foreground">{t('marketplacePage.signInTitle')}</h1>
         <p className="text-muted-foreground leading-relaxed">
-          Access the new marketplace of community and private skills. Filter, preview, and install directly to your tools once authenticated.
+          {t('marketplacePage.signInDesc')}
         </p>
         <div className="flex items-center justify-center gap-3 flex-wrap">
           <button
             onClick={startLogin}
             className="btn btn-primary"
           >
-            Start sign-in
+            {t('marketplacePage.startSignIn')}
           </button>
           <button
             onClick={() => setShowLoginModal(true)}
             className="btn btn-secondary"
           >
-            I already have a code
+            {t('marketplacePage.haveCode')}
           </button>
         </div>
       </div>
@@ -355,15 +358,15 @@ export default function Marketplace() {
         {showLoginModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-background border-2 border-foreground p-6 w-full max-w-sm mx-4">
-              <h2 className="text-xl font-bold mb-2 tracking-tight">Enter login code</h2>
+              <h2 className="text-xl font-bold mb-2 tracking-tight">{t('marketplacePage.loginCodeTitle')}</h2>
               <p className="text-muted-foreground text-sm mb-4">
-                Paste the 8-digit code from the browser window.
+                {t('marketplacePage.loginCodeDesc')}
               </p>
               <input
                 type="text"
                 value={loginCode}
                 onChange={(e) => setLoginCode(e.target.value)}
-                placeholder="XXXXXXXX"
+                placeholder={t('marketplacePage.loginCodePlaceholder')}
                 maxLength={8}
                 className="input text-center text-2xl font-mono tracking-widest mb-4"
               />
@@ -375,14 +378,14 @@ export default function Marketplace() {
                   }}
                   className="btn btn-secondary flex-1"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={handleLoginSubmit}
                   disabled={loggingIn || !loginCode.trim()}
                   className="btn btn-primary flex-1 disabled:opacity-50"
                 >
-                  {loggingIn ? 'Signing in...' : 'Submit'}
+                  {loggingIn ? t('marketplacePage.signingIn') : t('marketplacePage.submit')}
                 </button>
               </div>
             </div>
@@ -402,24 +405,24 @@ export default function Marketplace() {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 border-2 border-foreground bg-secondary uppercase tracking-wider text-xs font-bold">
             <Store size={16} />
-            Marketplace
+            {t('marketplacePage.title')}
           </div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight mt-2">User-hosted skills</h1>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight mt-2">{t('marketplacePage.subtitle')}</h1>
           <p className="text-sm text-muted-foreground">
-            Browse public skills uploaded by the community, filtered and ready for installation.
+            {t('marketplacePage.subtitleDesc')}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
             <p className="text-xl font-bold text-foreground leading-tight">{total.toLocaleString()}</p>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Skills available</p>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">{t('marketplacePage.skillsAvailable')}</p>
           </div>
           <button
             onClick={() => setRefreshKey((n) => n + 1)}
             className="btn btn-secondary"
           >
             <RefreshCw size={16} />
-            Refresh
+            {t('common.refresh')}
           </button>
         </div>
       </div>
@@ -432,7 +435,7 @@ export default function Marketplace() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search marketplace..."
+            placeholder={t('marketplacePage.searchPlaceholder')}
             className="input pl-10"
           />
         </div>
@@ -444,7 +447,7 @@ export default function Marketplace() {
               type="text"
               value={tag}
               onChange={(e) => setTag(e.target.value)}
-              placeholder="Filter by tag"
+              placeholder={t('marketplacePage.tagPlaceholder')}
               className="input pl-10"
             />
           </div>
@@ -455,7 +458,7 @@ export default function Marketplace() {
             }`}
           >
             <Image size={14} />
-            Cover
+            {t('marketplacePage.coverOnly')}
           </button>
         </div>
 
@@ -463,7 +466,7 @@ export default function Marketplace() {
           <div className="flex-1">
             <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-1">
               <Filter size={12} />
-              Category
+              {t('marketplacePage.category')}
             </div>
             <select
               value={category}
@@ -472,7 +475,7 @@ export default function Marketplace() {
             >
               {CATEGORY_OPTIONS.map((cat) => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.label}
+                  {t(cat.labelKey)}
                 </option>
               ))}
             </select>
@@ -482,7 +485,7 @@ export default function Marketplace() {
         <div>
           <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground mb-1">
             <ArrowUpDown size={12} />
-            Sort
+            {t('marketplacePage.sortLabel')}
           </div>
           <select
             value={sort}
@@ -491,7 +494,7 @@ export default function Marketplace() {
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.id} value={option.id}>
-                {option.label}
+                {t(option.labelKey)}
               </option>
             ))}
           </select>
@@ -501,11 +504,16 @@ export default function Marketplace() {
       {/* Results */}
       <div className="border-2 border-border-light bg-secondary p-4 flex items-center justify-between text-xs uppercase tracking-widest text-muted-foreground">
         <span>
-          Showing {Math.min(endItemIndex - startItemIndex + 1, skills.length)} of {total} (page {page} / {totalPages})
+          {t('marketplacePage.showing', {
+            showing: Math.min(endItemIndex - startItemIndex + 1, skills.length),
+            total,
+            page,
+            totalPages,
+          })}
         </span>
         <span className="flex items-center gap-2">
           <Clock size={12} />
-          Auto-refresh disabled
+          {t('marketplacePage.autoRefreshDisabled')}
         </span>
       </div>
 
@@ -521,7 +529,7 @@ export default function Marketplace() {
         </div>
       ) : skills.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground border-2 border-border-light">
-          No skills found with current filters.
+          {t('marketplacePage.noSkills')}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -549,7 +557,7 @@ export default function Marketplace() {
       {skills.length > 0 && (
         <div className="flex items-center justify-between gap-3">
           <div className="text-xs uppercase tracking-wider text-muted-foreground">
-            Page {page} of {totalPages}
+            {t('marketplacePage.pageOf', { page, totalPages })}
           </div>
           <div className="flex gap-2">
             <button
@@ -557,14 +565,14 @@ export default function Marketplace() {
               disabled={page <= 1}
               className="btn btn-secondary disabled:opacity-50"
             >
-              Prev
+              {t('marketplacePage.prev')}
             </button>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
               className="btn btn-primary disabled:opacity-50"
             >
-              Next
+              {t('marketplacePage.next')}
             </button>
           </div>
         </div>
@@ -579,7 +587,7 @@ export default function Marketplace() {
           >
             <div className="flex items-center justify-between px-5 py-4 border-b-2 border-border-light">
               <div>
-                <p className="text-xs uppercase tracking-widest text-muted-foreground">Marketplace skill</p>
+                <p className="text-xs uppercase tracking-widest text-muted-foreground">{t('marketplacePage.marketplaceSkill')}</p>
                 <h2 className="text-2xl font-bold tracking-tight text-foreground">{viewingSkill.name}</h2>
               </div>
               <button
@@ -593,35 +601,43 @@ export default function Marketplace() {
             <div className="grid gap-6 p-6 md:grid-cols-5 overflow-y-auto max-h-[80vh]">
               <div className="space-y-4 md:col-span-2">
                 <div className="border-2 border-border-light p-3 bg-secondary">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Owner</p>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">{t('marketplacePage.owner')}</p>
                   <div className="flex items-center gap-2 text-sm font-semibold">
                     <Users size={14} />
-                    {viewingSkill.ownerName || 'Unknown'}
+                    {viewingSkill.ownerName || t('marketplacePage.unknown')}
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Updated {viewingSkill.updated_at ? new Date(viewingSkill.updated_at).toLocaleDateString() : viewingSkill.updatedAt ? new Date(viewingSkill.updatedAt).toLocaleDateString() : '—'}
+                    {t('marketplacePage.updated', {
+                      date: viewingSkill.updated_at
+                        ? new Date(viewingSkill.updated_at).toLocaleDateString()
+                        : viewingSkill.updatedAt
+                          ? new Date(viewingSkill.updatedAt).toLocaleDateString()
+                          : '—',
+                    })}
                   </p>
                 </div>
 
                 <div className="border-2 border-border-light p-3 space-y-2">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Install to</p>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">{t('marketplacePage.installTo')}</p>
                   <ToolSelector showInstallTarget />
                   <button
                     onClick={handleInstall}
                     disabled={loadingSkillContent || installing || !skillContent}
                     className="btn btn-primary w-full disabled:opacity-50"
                   >
-                    {installing ? 'Installing...' : 'Install skill'}
+                    {installing ? t('marketplacePage.installing') : t('marketplacePage.installSkill')}
                   </button>
                   {(!skillContent || loadingSkillContent) && (
                     <p className="text-xs text-muted-foreground">
-                      {loadingSkillContent ? 'Loading SKILL.md...' : 'Preview SKILL.md first to enable install.'}
+                      {loadingSkillContent
+                        ? t('marketplacePage.loadingSkillMd')
+                        : t('marketplacePage.previewSkillMdFirst')}
                     </p>
                   )}
                 </div>
 
                 <div className="border border-border-light p-3">
-                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Tags</p>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">{t('marketplacePage.tags')}</p>
                   {viewingSkill.tags?.length ? (
                     <div className="flex flex-wrap gap-1">
                       {viewingSkill.tags.map((t) => (
@@ -631,7 +647,7 @@ export default function Marketplace() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground">No tags</p>
+                    <p className="text-xs text-muted-foreground">{t('marketplacePage.noTags')}</p>
                   )}
                 </div>
               </div>
@@ -647,7 +663,7 @@ export default function Marketplace() {
                   </div>
                 ) : (
                   <div className="text-sm text-muted-foreground text-center py-10">
-                    No SKILL.md available to preview.
+                    {t('marketplacePage.noSkillMd')}
                   </div>
                 )}
               </div>

@@ -322,7 +322,7 @@ export default function Playground() {
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <Play size={48} className="mx-auto mb-4 opacity-50" />
-              <p>Select a tool to start</p>
+              <p>{t('playground.selectToolToStart')}</p>
             </div>
           </div>
         )}
@@ -381,7 +381,7 @@ export default function Playground() {
                     onClick={loadInstalledSkills}
                     disabled={loadingSkills}
                     className="p-1 text-muted-foreground hover:text-foreground transition-colors ml-auto"
-                    title="Refresh"
+                    title={t('common.refresh')}
                   >
                     <RefreshCw size={12} className={loadingSkills ? 'animate-spin' : ''} />
                   </button>
@@ -393,10 +393,10 @@ export default function Playground() {
                     className="w-full bg-background text-foreground text-[11px] px-2 py-1.5 rounded-[4px] border border-border cursor-pointer"
                   >
                     {toolProjects.length === 0 ? (
-                      <option value="">No projects</option>
+                      <option value="">{t('playground.noProjects')}</option>
                     ) : (
                       <>
-                        <option value="">Select project...</option>
+                        <option value="">{t('playground.selectProject')}</option>
                         {toolProjects.map(project => (
                           <option key={project.path} value={project.path}>
                             {project.name}
@@ -415,7 +415,7 @@ export default function Playground() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search..."
+                  placeholder={t('playground.searchPlaceholder')}
                   className="w-full pl-7 pr-2 py-1.5 bg-secondary text-[12px] rounded-[4px] focus:outline-none"
                 />
               </div>
@@ -441,7 +441,7 @@ export default function Playground() {
                 {loadingSkills ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <RefreshCw size={20} className="animate-spin mx-auto mb-2" />
-                    <p className="text-xs">Loading...</p>
+                    <p className="text-xs">{t('common.loading')}</p>
                   </div>
                 ) : filteredSkills.length > 0 ? (
                   <div className="space-y-1">

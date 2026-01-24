@@ -59,7 +59,7 @@ export default function SearchDialog({ open, onClose }: SearchDialogProps) {
         setSelectedIndex(0)
       } catch (error) {
         console.error('Search failed:', error)
-        showToast('Search failed. Please try again.', 'error')
+        showToast(t('searchDialog.searchFailed'), 'error')
       } finally {
         setLoading(false)
       }

@@ -19,17 +19,15 @@ type ViewMode = 'personal' | 'projects'
 interface CategoryInfo {
   type: CategoryType
   icon: typeof BookOpen
-  label: string
   folder: string
-  description: string
 }
 
 // Category definitions
 const CATEGORIES: CategoryInfo[] = [
-  { type: 'skills', icon: BookOpen, label: 'Skills', folder: 'skills', description: 'Reusable skill files' },
-  { type: 'prompts', icon: MessageCircle, label: 'Prompts', folder: 'prompts', description: 'System prompts' },
-  { type: 'commands', icon: Terminal, label: 'Commands', folder: 'commands', description: 'Custom commands' },
-  { type: 'plugins', icon: Blocks, label: 'Plugins', folder: 'plugins', description: 'Extension plugins' },
+  { type: 'skills', icon: BookOpen, folder: 'skills' },
+  { type: 'prompts', icon: MessageCircle, folder: 'prompts' },
+  { type: 'commands', icon: Terminal, folder: 'commands' },
+  { type: 'plugins', icon: Blocks, folder: 'plugins' },
 ]
 
 // Tool config folder names
@@ -284,7 +282,7 @@ export default function Installed() {
     if (selectedProject?.path === project.path) {
       setSelectedProject(null)
     }
-    showToast('Project removed', 'success')
+    showToast(t('installed.projectRemoved'), 'success')
   }
 
   // Open category in SkillsExplorer
@@ -296,7 +294,7 @@ export default function Installed() {
     
     const path = `${basePath}/${catInfo.folder}`
     setExplorerPath(path)
-    setExplorerTitle(`${titlePrefix} - ${catInfo.label}`)
+    setExplorerTitle(`${titlePrefix} - ${getCategoryLabel(catInfo.type)}`)
     setExplorerOpen(true)
   }
 
@@ -331,6 +329,9 @@ export default function Installed() {
     if (!catInfo) return ''
     return `${selectedProject.path}/${configFolder}/${catInfo.folder}`
   }
+
+  const getCategoryLabel = (type: CategoryType) => t(`installed.categories.${type}.label`)
+  const getCategoryDescription = (type: CategoryType) => t(`installed.categories.${type}.description`)
 
   return (
     <div className="h-full flex">
@@ -369,7 +370,7 @@ export default function Installed() {
                   <div className="flex-1 min-w-0">
                     <span className="font-semibold text-sm truncate block">{tool.name}</span>
                     <span className={`text-xs ${selectedTool === tool.id ? 'text-background/70' : 'text-muted-foreground'}`}>
-                      {tool.skills_count} items
+                      {t('installed.itemCount', { count: tool.skills_count })}
                     </span>
                   </div>
                 </div>
@@ -409,7 +410,7 @@ export default function Installed() {
                     }`}
                   >
                     <User size={16} />
-                    Personal
+                    {t('installed.personalSkills')}
                   </button>
                   <button
                     onClick={() => setViewMode('projects')}
@@ -420,7 +421,7 @@ export default function Installed() {
                     }`}
                   >
                     <Briefcase size={16} />
-                    Projects
+                    {t('installed.projectSkills')}
                   </button>
                 </div>
               </div>
@@ -447,8 +448,8 @@ export default function Installed() {
                             </div>
                             <ChevronRight size={20} className="text-muted-foreground group-hover:text-foreground transition-colors" />
                           </div>
-                          <h3 className="font-bold text-lg mb-1">{cat.label}</h3>
-                          <p className="text-sm text-muted-foreground mb-2">{cat.description}</p>
+                          <h3 className="font-bold text-lg mb-1">{getCategoryLabel(cat.type)}</h3>
+                          <p className="text-sm text-muted-foreground mb-2">{getCategoryDescription(cat.type)}</p>
                           <div className="text-2xl font-bold">{count}</div>
                         </button>
                       )
@@ -462,7 +463,7 @@ export default function Installed() {
                       className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
                     >
                       <FolderOpen size={16} />
-                      Open config folder
+                      {t('installed.openConfigFolder')}
                     </button>
                   </div>
                 </>
@@ -479,7 +480,7 @@ export default function Installed() {
                             onClick={() => setSelectedProject(null)}
                             className="text-muted-foreground hover:text-foreground"
                           >
-                            ← Back
+                            ← {t('common.back')}
                           </button>
                           <div>
                             <h3 className="font-bold">{selectedProject.name}</h3>
@@ -518,7 +519,7 @@ export default function Installed() {
                                       className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors opacity-0 group-hover:opacity-100"
                                     >
                                       <Download size={14} />
-                                      Import
+                                      {t('installed.import')}
                                     </button>
                                     <button
                                       onClick={() => openCategory(cat.type, `${selectedProject.path}/${configFolder}`, selectedProject.name)}
@@ -532,8 +533,8 @@ export default function Installed() {
                                   onClick={() => openCategory(cat.type, `${selectedProject.path}/${configFolder}`, selectedProject.name)}
                                   className="text-left w-full"
                                 >
-                                  <h3 className="font-bold text-lg mb-1">{cat.label}</h3>
-                                  <p className="text-sm text-muted-foreground mb-2">{cat.description}</p>
+                                  <h3 className="font-bold text-lg mb-1">{getCategoryLabel(cat.type)}</h3>
+                                  <p className="text-sm text-muted-foreground mb-2">{getCategoryDescription(cat.type)}</p>
                                   <div className="text-2xl font-bold">{count}</div>
                                 </button>
                               </div>
@@ -542,8 +543,8 @@ export default function Installed() {
                         </div>
                       ) : (
                         <div className="card p-6 text-center text-muted-foreground max-w-2xl">
-                          <p>No {TOOL_CONFIG_FOLDERS[selectedTool] || `.${selectedTool}`} folder found in this project.</p>
-                          <p className="text-sm mt-2">Create the folder to start adding project-level skills.</p>
+                          <p>{t('installed.noToolConfig', { folder: TOOL_CONFIG_FOLDERS[selectedTool] || `.${selectedTool}` })}</p>
+                          <p className="text-sm mt-2">{t('installed.noToolConfigHint')}</p>
                         </div>
                       )}
                     </>
@@ -552,14 +553,14 @@ export default function Installed() {
                     <>
                       <div className="flex items-center justify-between mb-4 max-w-2xl">
                         <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                          Projects ({toolProjects.length})
+                          {t('installed.projectsCount', { count: toolProjects.length })}
                         </h3>
                         <button
                           onClick={handleAddProject}
                           className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-foreground hover:bg-secondary border-2 border-border-light hover:border-foreground transition-colors"
                         >
                           <Plus size={16} />
-                          Add Project
+                          {t('installed.addProject')}
                         </button>
                       </div>
 
@@ -583,11 +584,11 @@ export default function Installed() {
                                     <div className="flex items-center gap-3 mt-1">
                                       {project.hasToolConfig ? (
                                         <span className="text-xs text-muted-foreground">
-                                          {totalCount} items
+                                          {t('installed.itemCount', { count: totalCount })}
                                         </span>
                                       ) : (
                                         <span className="text-xs text-yellow-600">
-                                          No config folder
+                                          {t('installed.noToolConfigShort')}
                                         </span>
                                       )}
                                     </div>
@@ -612,14 +613,14 @@ export default function Installed() {
                       ) : (
                         <div className="card p-8 text-center text-muted-foreground max-w-2xl">
                           <Briefcase size={32} className="mx-auto mb-3 opacity-50" />
-                          <p>No projects added yet</p>
-                          <p className="text-sm mt-1">Add a project folder to manage its skills</p>
+                          <p>{t('installed.noProjects')}</p>
+                          <p className="text-sm mt-1">{t('installed.noProjectsDesc')}</p>
                           <button
                             onClick={handleAddProject}
                             className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 transition-colors"
                           >
                             <Plus size={16} />
-                            Add Project
+                            {t('installed.addProject')}
                           </button>
                         </div>
                       )}
@@ -631,7 +632,7 @@ export default function Installed() {
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            Select a tool to manage
+            {t('installed.selectTool')}
           </div>
         )}
       </div>
@@ -658,7 +659,7 @@ export default function Installed() {
           toolName={selectedToolData.name}
           onClose={() => setImportModalOpen(false)}
           onImported={async () => {
-            showToast('Skills imported successfully', 'success')
+            showToast(t('installed.skillsImported'), 'success')
             // Refresh counts
             if (selectedProject) {
               const result = await loadProjectCounts(selectedProject)

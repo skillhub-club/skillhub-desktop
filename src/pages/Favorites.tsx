@@ -49,7 +49,7 @@ export default function Favorites() {
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .trim()
-    return safeName || slug.split('-').slice(-1)[0] || 'skill'
+    return safeName || slug.split('-').slice(-1)[0] || t('common.skillFallback')
   }
 
   const handleInstall = async (favorite: FavoriteSkill) => {
@@ -102,7 +102,7 @@ ${skill.description}
       const skillFolderName = getSkillFolderName(skill.slug, skill.name)
       const filePath = await save({
         defaultPath: `${skillFolderName}-SKILL.md`,
-        filters: [{ name: 'Markdown', extensions: ['md'] }],
+        filters: [{ name: t('common.markdown'), extensions: ['md'] }],
       })
 
       if (filePath) {

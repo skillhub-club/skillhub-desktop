@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react'
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info'
@@ -8,6 +9,8 @@ interface ToastProps {
   type?: ToastType
   onClose: () => void
   duration?: number
+  actionLabel?: string
+  onAction?: () => void
 }
 
 const toastConfig: Record<ToastType, { icon: typeof CheckCircle; colorClass: string; bgClass: string }> = {
@@ -33,7 +36,15 @@ const toastConfig: Record<ToastType, { icon: typeof CheckCircle; colorClass: str
   },
 }
 
-export default function Toast({ message, type = 'success', onClose, duration = 3000 }: ToastProps) {
+export default function Toast({
+  message,
+  type = 'success',
+  onClose,
+  duration = 3000,
+  actionLabel,
+  onAction,
+}: ToastProps) {
+  const { t } = useTranslation()
   const config = toastConfig[type]
   const Icon = config.icon
 
@@ -41,6 +52,13 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
     const timer = setTimeout(onClose, duration)
     return () => clearTimeout(timer)
   }, [onClose, duration])
+
+  const handleAction = () => {
+    if (onAction) {
+      onAction()
+    }
+    onClose()
+  }
 
   return (
     <div 
@@ -50,10 +68,18 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
     >
       <Icon size={18} className={config.colorClass} />
       <span className="font-semibold uppercase tracking-wider text-sm">{message}</span>
+      {actionLabel && onAction && (
+        <button
+          onClick={handleAction}
+          className="px-2 py-1 border border-background/60 text-xs font-semibold rounded hover:bg-background hover:text-foreground transition-colors"
+        >
+          {actionLabel}
+        </button>
+      )}
       <button 
         onClick={onClose} 
         className="text-background/60 hover:text-background"
-        aria-label="Close notification"
+        aria-label={t('common.closeNotification')}
       >
         <X size={16} />
       </button>

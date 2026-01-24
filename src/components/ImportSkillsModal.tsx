@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Loader2, Check, Download } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
+import { useTranslation } from 'react-i18next'
 
 interface InstalledSkill {
   name: string
@@ -25,6 +26,7 @@ export default function ImportSkillsModal({
   onClose,
   onImported
 }: ImportSkillsModalProps) {
+  const { t } = useTranslation()
   const [skills, setSkills] = useState<InstalledSkill[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(new Set())
@@ -42,7 +44,7 @@ export default function ImportSkillsModal({
       })
       .catch(err => {
         console.error('Failed to load skills:', err)
-        setError('Failed to load personal skills')
+        setError(t('importSkills.failedToLoad'))
       })
       .finally(() => setLoading(false))
   }, [sourcePath])
@@ -95,7 +97,7 @@ export default function ImportSkillsModal({
     }
 
     if (errors.length > 0) {
-      setError(`Some imports failed:\n${errors.join('\n')}`)
+      setError(`${t('importSkills.someImportsFailed')}\n${errors.join('\n')}`)
     } else {
       onClose()
     }
@@ -113,8 +115,10 @@ export default function ImportSkillsModal({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b-2 border-border-light">
           <div>
-            <h2 className="text-lg font-bold tracking-tight">IMPORT FROM PERSONAL</h2>
-            <p className="text-sm text-muted-foreground">{toolName} Skills</p>
+            <h2 className="text-lg font-bold tracking-tight">{t('importSkills.title')}</h2>
+            <p className="text-sm text-muted-foreground">
+              {t('importSkills.toolSkills', { tool: toolName })}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -132,7 +136,7 @@ export default function ImportSkillsModal({
             </div>
           ) : skills.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
-              <p>No personal skills found</p>
+              <p>{t('importSkills.noSkills')}</p>
               <p className="text-sm mt-1">{sourcePath}</p>
             </div>
           ) : (
@@ -140,13 +144,13 @@ export default function ImportSkillsModal({
               {/* Select all */}
               <div className="flex items-center justify-between mb-3 pb-3 border-b border-border-light">
                 <span className="text-sm text-muted-foreground">
-                  {selectedSkills.size} of {skills.length} selected
+                  {t('importSkills.selectedCount', { selected: selectedSkills.size, total: skills.length })}
                 </span>
                 <button
                   onClick={toggleAll}
                   className="text-sm font-semibold text-foreground hover:underline"
                 >
-                  {selectedSkills.size === skills.length ? 'Deselect All' : 'Select All'}
+                  {selectedSkills.size === skills.length ? t('importSkills.deselectAll') : t('importSkills.selectAll')}
                 </button>
               </div>
 
@@ -198,7 +202,7 @@ export default function ImportSkillsModal({
             onClick={onClose}
             className="btn btn-secondary flex-1"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleImport}
@@ -208,12 +212,14 @@ export default function ImportSkillsModal({
             {importing ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
-                Importing... ({importedCount}/{selectedSkills.size})
+                {t('importSkills.importing', { done: importedCount, total: selectedSkills.size })}
               </>
             ) : (
               <>
                 <Download size={16} />
-                Import {selectedSkills.size > 0 ? `(${selectedSkills.size})` : ''}
+                {selectedSkills.size > 0
+                  ? t('importSkills.importWithCount', { count: selectedSkills.size })
+                  : t('importSkills.import')}
               </>
             )}
           </button>

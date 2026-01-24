@@ -11,29 +11,29 @@ interface ToolSelectorProps {
 }
 
 // Tool descriptions for user reference
-const TOOL_INFO: Record<string, { desc: string; url: string }> = {
+const TOOL_INFO: Record<string, { descKey: string; url: string }> = {
   'claude-code': {
-    desc: 'Anthropic official CLI agent for coding tasks',
+    descKey: 'toolSelector.toolInfo.claudeCode',
     url: 'https://docs.anthropic.com/en/docs/agents-and-tools/claude-code',
   },
   'cursor': {
-    desc: 'AI-first code editor with built-in assistant',
+    descKey: 'toolSelector.toolInfo.cursor',
     url: 'https://cursor.com',
   },
   'codex': {
-    desc: 'OpenAI Codex CLI for code generation',
+    descKey: 'toolSelector.toolInfo.codex',
     url: 'https://github.com/openai/codex',
   },
   'opencode': {
-    desc: 'Open-source AI coding assistant',
+    descKey: 'toolSelector.toolInfo.opencode',
     url: 'https://github.com/opencode-ai/opencode',
   },
   'gemini-cli': {
-    desc: 'Google Gemini CLI for AI tasks',
+    descKey: 'toolSelector.toolInfo.geminiCli',
     url: 'https://github.com/google-gemini/gemini-cli',
   },
   'windsurf': {
-    desc: 'Codeium AI-powered IDE',
+    descKey: 'toolSelector.toolInfo.windsurf',
     url: 'https://codeium.com/windsurf',
   },
 }
@@ -66,7 +66,7 @@ export default function ToolSelector({ onSelectionChange, compact = false, showI
   if (installedTools.length === 0) {
     return (
       <div className="text-center py-2 text-muted-foreground text-sm">
-        No AI coding tools detected
+        {t('toolSelector.noTools')}
       </div>
     )
   }
@@ -108,7 +108,7 @@ export default function ToolSelector({ onSelectionChange, compact = false, showI
                 {info && (
                   <div className="absolute bottom-full left-0 mb-2 w-56 p-2.5 bg-popover text-popover-foreground text-xs rounded-lg shadow-lg border border-border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20">
                     <p className="font-medium mb-1">{tool.name}</p>
-                    <p className="text-muted-foreground">{info.desc}</p>
+                    <p className="text-muted-foreground">{t(info.descKey)}</p>
                   </div>
                 )}
               </div>
@@ -118,7 +118,7 @@ export default function ToolSelector({ onSelectionChange, compact = false, showI
         {/* Info hint */}
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
           <Info size={12} />
-          Hover over a tool for more info
+          {t('toolSelector.hoverHint')}
         </p>
       </div>
     )
@@ -261,7 +261,7 @@ export default function ToolSelector({ onSelectionChange, compact = false, showI
             <div className="flex-1">
               <span className="font-bold text-foreground">{tool.name}</span>
               <span className="text-sm text-muted-foreground ml-2">
-                ({tool.skills_count} skills)
+                {t('toolSelector.skillCount', { count: tool.skills_count })}
               </span>
             </div>
           </label>

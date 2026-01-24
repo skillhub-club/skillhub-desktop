@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { spawn, IPty } from 'tauri-pty'
@@ -9,6 +10,7 @@ interface TerminalProps {
 }
 
 export default function Terminal({ onClose }: TerminalProps) {
+  const { t } = useTranslation()
   const terminalRef = useRef<HTMLDivElement>(null)
   const xtermRef = useRef<XTerm | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
@@ -67,11 +69,14 @@ export default function Terminal({ onClose }: TerminalProps) {
     window.addEventListener('resize', handleResize)
 
     // Welcome message
+    const bannerText = t('terminal.banner')
+    const trimmedBanner = bannerText.length > 36 ? bannerText.slice(0, 36) : bannerText
+    const bannerLine = `  ${trimmedBanner}`.padEnd(38, ' ')
     xterm.writeln('\x1b[36m╔══════════════════════════════════════╗\x1b[0m')
-    xterm.writeln('\x1b[36m║  SkillHub Terminal - PTY Test        ║\x1b[0m')
+    xterm.writeln(`\x1b[36m║${bannerLine}║\x1b[0m`)
     xterm.writeln('\x1b[36m╚══════════════════════════════════════╝\x1b[0m')
     xterm.writeln('')
-    xterm.writeln('\x1b[90mType a command and press Enter to test.\x1b[0m')
+    xterm.writeln(`\x1b[90m${t('terminal.prompt')}\x1b[0m`)
     xterm.writeln('')
 
     return () => {
@@ -79,7 +84,7 @@ export default function Terminal({ onClose }: TerminalProps) {
       xterm.dispose()
       xtermRef.current = null
     }
-  }, [])
+  }, [t])
 
   // Start shell
   const startShell = useCallback(async () => {
@@ -88,7 +93,7 @@ export default function Terminal({ onClose }: TerminalProps) {
 
     try {
       setIsRunning(true)
-      xterm.writeln('\x1b[33mStarting shell...\x1b[0m')
+      xterm.writeln(`\x1b[33m${t('terminal.startingShell')}\x1b[0m`)
 
       // Use zsh on macOS, bash as fallback
       const shell = '/bin/zsh'
@@ -113,7 +118,7 @@ export default function Terminal({ onClose }: TerminalProps) {
       // PTY exit
       const exitDisposable = pty.onExit(({ exitCode }: { exitCode: number }) => {
         xterm.writeln('')
-        xterm.writeln(`\x1b[90m[Shell exited with code ${exitCode}]\x1b[0m`)
+        xterm.writeln(`\x1b[90m[${t('terminal.shellExit', { code: exitCode })}]\x1b[0m`)
         setIsRunning(false)
         ptyRef.current = null
         dataDisposable.dispose()
@@ -122,10 +127,10 @@ export default function Terminal({ onClose }: TerminalProps) {
       })
 
     } catch (error) {
-      xterm.writeln(`\x1b[31mError: ${error}\x1b[0m`)
+      xterm.writeln(`\x1b[31m${t('terminal.error', { error })}\x1b[0m`)
       setIsRunning(false)
     }
-  }, [isRunning])
+  }, [isRunning, t])
 
   // Run a simple command
   const runCommand = useCallback(async (cmd: string) => {
@@ -147,18 +152,18 @@ export default function Terminal({ onClose }: TerminalProps) {
       pty.onExit(({ exitCode }: { exitCode: number }) => {
         xterm.writeln('')
         if (exitCode === 0) {
-          xterm.writeln('\x1b[32m✓ Command completed\x1b[0m')
+          xterm.writeln(`\x1b[32m✓ ${t('terminal.commandCompleted')}\x1b[0m`)
         } else {
-          xterm.writeln(`\x1b[31m✗ Exit code: ${exitCode}\x1b[0m`)
+          xterm.writeln(`\x1b[31m✗ ${t('terminal.exitCode', { code: exitCode })}\x1b[0m`)
         }
         xterm.writeln('')
         dataDisp.dispose()
       })
 
     } catch (error) {
-      xterm.writeln(`\x1b[31mError: ${error}\x1b[0m`)
+      xterm.writeln(`\x1b[31m${t('terminal.error', { error })}\x1b[0m`)
     }
-  }, [])
+  }, [t])
 
   // Stop running process
   const stopProcess = useCallback(() => {
@@ -175,9 +180,9 @@ export default function Terminal({ onClose }: TerminalProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 bg-[#1f2335]">
           <div className="flex items-center gap-3">
-            <span className="text-white font-bold">Terminal Test</span>
+            <span className="text-white font-bold">{t('terminal.title')}</span>
             <span className={`text-xs px-2 py-0.5 rounded ${isRunning ? 'bg-green-600' : 'bg-gray-600'}`}>
-              {isRunning ? 'Running' : 'Idle'}
+              {isRunning ? t('terminal.statusRunning') : t('terminal.statusIdle')}
             </span>
           </div>
           <button
@@ -199,33 +204,33 @@ export default function Terminal({ onClose }: TerminalProps) {
             onClick={() => runCommand('echo "Hello from PTY!"')}
             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded"
           >
-            Test: echo
+            {t('terminal.testEcho')}
           </button>
           <button
             onClick={() => runCommand('ls -la')}
             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded"
           >
-            Test: ls -la
+            {t('terminal.testLs')}
           </button>
           <button
             onClick={() => runCommand('pwd && whoami')}
             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded"
           >
-            Test: pwd & whoami
+            {t('terminal.testPwdWhoami')}
           </button>
           <button
             onClick={startShell}
             disabled={isRunning}
             className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white text-sm font-medium rounded"
           >
-            Start Shell
+            {t('terminal.startShell')}
           </button>
           {isRunning && (
             <button
               onClick={stopProcess}
               className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded"
             >
-              Stop
+              {t('terminal.stop')}
             </button>
           )}
         </div>

@@ -82,7 +82,7 @@ export default function Settings() {
       case 'subscription':
         return <SubscriptionPage t={t} />
       case 'usage':
-        return <UsagePage t={t} />
+        return <UsagePage t={t} currentLang={currentLang} />
       case 'api-keys':
         return <ApiKeysPage t={t} />
       case 'appearance':
@@ -323,7 +323,7 @@ function AccountPage({ user, isAuthenticated, onLogout, t }: AccountPageProps) {
             )}
             <div>
               <div className="text-lg font-semibold text-foreground">
-                {user?.name || user?.github_username || 'User'}
+                {user?.name || user?.github_username || t('settings.userFallback')}
               </div>
               <div className="text-sm text-muted-foreground">{user?.email}</div>
               {user?.github_username && (
@@ -386,6 +386,7 @@ function SubscriptionPage({ t }: SubscriptionPageProps) {
   const dailyLimit = QUOTA_LIMITS[tier as keyof typeof QUOTA_LIMITS] || 2
   const dailyUsed = accountData?.dailyUsed || 0
   const dailyRemaining = Math.max(0, dailyLimit - dailyUsed)
+  const planLabel = tier === 'pro' ? t('settings.planPro') : t('settings.planFree')
 
   const PRO_FEATURES = [
     t('settings.proFeature1'),
@@ -490,7 +491,7 @@ function SubscriptionPage({ t }: SubscriptionPageProps) {
             </div>
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider">{t('settings.plan')}</p>
-              <p className="text-xl font-bold text-foreground uppercase">{tier}</p>
+              <p className="text-xl font-bold text-foreground uppercase">{planLabel}</p>
             </div>
           </div>
           {isPro ? (
@@ -518,7 +519,7 @@ function SubscriptionPage({ t }: SubscriptionPageProps) {
               <Crown size={24} className={isPro ? 'text-white' : 'text-muted-foreground'} />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-foreground uppercase">{isPro ? 'Pro' : 'Free'}</h3>
+              <h3 className="text-xl font-bold text-foreground uppercase">{planLabel}</h3>
               {isPro ? (
                 <p className="text-sm text-muted-foreground">{t('settings.activeSubscription')}</p>
               ) : (
@@ -539,7 +540,7 @@ function SubscriptionPage({ t }: SubscriptionPageProps) {
               onClick={handleUpgrade}
               className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-white font-bold uppercase tracking-wider transition flex items-center gap-2"
             >
-              {t('settings.upgradeToProBtn')} - $9.99/mo
+              {t('settings.upgradeToProBtn')} - {t('settings.proMonthlyPrice')}
               <ChevronRight size={14} />
             </button>
           )}
@@ -572,9 +573,10 @@ function SubscriptionPage({ t }: SubscriptionPageProps) {
 
 interface UsagePageProps {
   t: (key: string) => string
+  currentLang: string
 }
 
-function UsagePage({ t }: UsagePageProps) {
+function UsagePage({ t, currentLang }: UsagePageProps) {
   const { isAuthenticated } = useAppStore()
   const { accountData, loading, loadAccountData } = useAccountCache()
 
@@ -698,6 +700,7 @@ function UsagePage({ t }: UsagePageProps) {
             const count = (dayData?.count || 0) + (dayData?.credits_used || 0)
             const maxCount = Math.max(...weeklyUsage.map(u => (u.count || 0) + (u.credits_used || 0)), 1)
             const height = count > 0 ? Math.max((count / maxCount) * 100, 10) : 5
+            const locale = currentLang === 'zh' ? 'zh-CN' : 'en'
 
             return (
               <div key={dateStr} className="flex-1 flex flex-col items-center gap-1">
@@ -706,7 +709,7 @@ function UsagePage({ t }: UsagePageProps) {
                   style={{ height: `${height}%` }}
                 />
                 <span className="text-[10px] text-muted-foreground">
-                  {d.toLocaleDateString('en', { weekday: 'narrow' })}
+                  {d.toLocaleDateString(locale, { weekday: 'narrow' })}
                 </span>
               </div>
             )
@@ -1077,7 +1080,7 @@ function ApiKeysPage({ t }: ApiKeysPageProps) {
 
             <input
               type="text"
-              placeholder="sk-skillhubs-..."
+              placeholder={t('settings.apiKeyPlaceholder')}
               value={configApiKey}
               onChange={(e) => setConfigApiKey(e.target.value)}
               className="w-full bg-background text-foreground font-mono px-4 py-3 border-2 border-foreground mb-4 focus:outline-none text-sm"
@@ -1114,12 +1117,12 @@ function ApiKeysPage({ t }: ApiKeysPageProps) {
         <div className="bg-secondary/30 border border-border p-4">
           <p className="text-xs font-bold text-foreground uppercase mb-3">{t('settings.anthropicProxy')}</p>
           <div className="space-y-2">
-            <div className="bg-background border border-border p-3 font-mono text-xs text-muted-foreground">
-              <div className="text-[9px] text-muted-foreground/50 uppercase font-bold mb-1">1. Set Base URL</div>
+          <div className="bg-background border border-border p-3 font-mono text-xs text-muted-foreground">
+              <div className="text-[9px] text-muted-foreground/50 uppercase font-bold mb-1">{t('settings.quickStartStep1')}</div>
               <code>export ANTHROPIC_BASE_URL=https://www.skillhub.club/api/v1/anthropic</code>
             </div>
             <div className="bg-background border border-border p-3 font-mono text-xs text-muted-foreground">
-              <div className="text-[9px] text-muted-foreground/50 uppercase font-bold mb-1">2. Set API Key</div>
+              <div className="text-[9px] text-muted-foreground/50 uppercase font-bold mb-1">{t('settings.quickStartStep2')}</div>
               <code>export ANTHROPIC_API_KEY=YOUR_KEY</code>
             </div>
           </div>
@@ -1214,7 +1217,7 @@ function AppearancePage({ theme, setTheme, currentLang, onLanguageChange, onClea
                     : 'border-border-light hover:border-foreground/50'
                 }`}
               >
-                <div className="text-sm font-medium">English</div>
+                <div className="text-sm font-medium">{t('settings.english')}</div>
               </button>
               <button
                 onClick={() => onLanguageChange('zh')}
@@ -1224,7 +1227,7 @@ function AppearancePage({ theme, setTheme, currentLang, onLanguageChange, onClea
                     : 'border-border-light hover:border-foreground/50'
                 }`}
               >
-                <div className="text-sm font-medium">中文</div>
+                <div className="text-sm font-medium">{t('settings.chinese')}</div>
               </button>
             </div>
           </div>
@@ -1251,7 +1254,7 @@ function AppearancePage({ theme, setTheme, currentLang, onLanguageChange, onClea
       <SettingsSection title={t('settings.about')}>
         <SettingsCard>
           <SettingsRow
-            label="SkillHub Desktop"
+            label={t('settings.appName')}
             description={`${t('settings.version')} ${__APP_VERSION__}`}
           />
           <SettingsRow
@@ -1268,7 +1271,7 @@ function AppearancePage({ theme, setTheme, currentLang, onLanguageChange, onClea
             }
           />
           <SettingsRow
-            label="GitHub"
+            label={t('settings.github')}
             action={
               <a
                 href="https://github.com/anthropics/skillhub"
