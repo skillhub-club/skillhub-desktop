@@ -68,27 +68,26 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: Import Apple Certificate (macOS only)
+      - name: Verify signing configuration (macOS only)
         if: matrix.platform == 'macos-latest'
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         run: |
-          if [ -n "$APPLE_CERTIFICATE" ]; then
-            echo "Importing Apple certificate..."
-            # Write base64 to file, then decode using macOS base64
-            printf '%s' "$APPLE_CERTIFICATE" > /tmp/cert_base64.txt
-            base64 -D < /tmp/cert_base64.txt > certificate.p12
-            rm /tmp/cert_base64.txt
-            security create-keychain -p actions build.keychain
-            security default-keychain -s build.keychain
-            security unlock-keychain -p actions build.keychain
-            security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions build.keychain
-            rm certificate.p12
+          echo "Checking signing configuration..."
+          if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
+            echo "✓ APPLE_CERTIFICATE is set"
           else
-            echo "No Apple certificate configured, skipping code signing"
+            echo "✗ APPLE_CERTIFICATE is not set"
           fi
+          if [ -n "${{ secrets.APPLE_SIGNING_IDENTITY }}" ]; then
+            echo "✓ APPLE_SIGNING_IDENTITY is set"
+          else
+            echo "✗ APPLE_SIGNING_IDENTITY is not set"
+          fi
+          if [ -n "${{ secrets.APPLE_ID }}" ]; then
+            echo "✓ APPLE_ID is set"
+          else
+            echo "✗ APPLE_ID is not set"
+          fi
+          echo "Note: tauri-action will automatically import the certificate and handle signing/notarization"
 
       - name: Sync version from git tag
         shell: bash
