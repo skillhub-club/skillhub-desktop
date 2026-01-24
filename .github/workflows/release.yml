@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  release:
     permissions:
       contents: write
     strategy:
@@ -16,41 +16,18 @@ jobs:
         include:
           - platform: 'macos-latest'
             args: '--target aarch64-apple-darwin'
-            target: 'aarch64-apple-darwin'
-            name: 'Mac-Apple-Silicon'
-            updater_target: 'darwin-aarch64'
+            name: 'macOS-arm64'
           - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
-            target: 'x86_64-apple-darwin'
-            name: 'Mac-Intel'
-            updater_target: 'darwin-x86_64'
+            name: 'macOS-x64'
           - platform: 'windows-latest'
             args: ''
-            target: 'x86_64-pc-windows-msvc'
             name: 'Windows-x64'
-            updater_target: 'windows-x86_64'
-          - platform: 'ubuntu-22.04'
-            args: ''
-            target: 'x86_64-unknown-linux-gnu'
-            name: 'Linux-x64'
-            updater_target: 'linux-x86_64'
 
     runs-on: ${{ matrix.platform }}
-
-    outputs:
-      version: ${{ steps.get_version.outputs.version }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Get version from tag
-        id: get_version
-        shell: bash
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -68,40 +45,27 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: Verify signing configuration (macOS only)
-        if: matrix.platform == 'macos-latest'
-        run: |
-          echo "Checking signing configuration..."
-          if [ -n "${{ secrets.APPLE_CERTIFICATE }}" ]; then
-            echo "✓ APPLE_CERTIFICATE is set"
-          else
-            echo "✗ APPLE_CERTIFICATE is not set"
-          fi
-          if [ -n "${{ secrets.APPLE_SIGNING_IDENTITY }}" ]; then
-            echo "✓ APPLE_SIGNING_IDENTITY is set"
-          else
-            echo "✗ APPLE_SIGNING_IDENTITY is not set"
-          fi
-          if [ -n "${{ secrets.APPLE_ID }}" ]; then
-            echo "✓ APPLE_ID is set"
-          else
-            echo "✗ APPLE_ID is not set"
-          fi
-          echo "Note: tauri-action will automatically import the certificate and handle signing/notarization"
-
       - name: Sync version from git tag
         shell: bash
         run: |
+          # Extract version from tag (remove 'v' prefix)
           VERSION="${GITHUB_REF_NAME#v}"
           echo "Syncing version to $VERSION"
+
+          # Update package.json and tauri.conf.json using Node.js (cross-platform)
           node -e "
             const fs = require('fs');
+
+            // Update package.json
             const pkg = JSON.parse(fs.readFileSync('package.json'));
             pkg.version = '$VERSION';
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+
+            // Update tauri.conf.json
             const tauri = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json'));
             tauri.version = '$VERSION';
             fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(tauri, null, 2) + '\n');
+
             console.log('Version synced to $VERSION');
           "
 
@@ -109,310 +73,37 @@ jobs:
         run: npm ci
 
       - name: Build the app
-        id: build
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS signing
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Updater signing
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # macOS Signing & Notarization secrets
+          # Uncomment these ONLY if you have configured the secrets in GitHub Settings
+          # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          # APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
-          args: ${{ matrix.args }}
+          tagName: ${{ github.ref_name }}
+          releaseName: 'SkillHub Desktop ${{ github.ref_name }}'
+          releaseBody: |
+            See the [CHANGELOG](https://github.com/skillhub-club/skillhub-desktop/blob/main/CHANGELOG.md) for details.
 
-      - name: Rename artifacts and prepare update files (macOS)
-        if: matrix.platform == 'macos-latest'
-        shell: bash
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          TARGET="${{ matrix.target }}"
-          NAME="${{ matrix.name }}"
-          
-          # Find the DMG file
-          DMG_FILE=$(find src-tauri/target/$TARGET/release/bundle/dmg -name "*.dmg" 2>/dev/null | head -1)
-          if [ -n "$DMG_FILE" ]; then
-            NEW_DMG="SkillHub-Desktop-${VERSION}-${NAME}.dmg"
-            cp "$DMG_FILE" "$NEW_DMG"
-            echo "dmg_path=$NEW_DMG" >> $GITHUB_ENV
-            echo "Created: $NEW_DMG"
-          fi
-          
-          # Find the .app.tar.gz for updater (Tauri generates this automatically)
-          TAR_FILE=$(find src-tauri/target/$TARGET/release/bundle/macos -name "*.app.tar.gz" 2>/dev/null | head -1)
-          SIG_FILE=$(find src-tauri/target/$TARGET/release/bundle/macos -name "*.app.tar.gz.sig" 2>/dev/null | head -1)
-          
-          if [ -n "$TAR_FILE" ]; then
-            NEW_TAR="SkillHub-Desktop-${VERSION}-${NAME}.app.tar.gz"
-            cp "$TAR_FILE" "$NEW_TAR"
-            echo "tar_path=$NEW_TAR" >> $GITHUB_ENV
-            echo "Created: $NEW_TAR"
-          fi
-          
-          if [ -n "$SIG_FILE" ]; then
-            NEW_SIG="SkillHub-Desktop-${VERSION}-${NAME}.app.tar.gz.sig"
-            cp "$SIG_FILE" "$NEW_SIG"
-            echo "sig_path=$NEW_SIG" >> $GITHUB_ENV
-            SIGNATURE=$(cat "$SIG_FILE")
-            echo "signature=$SIGNATURE" >> $GITHUB_ENV
-            echo "Created: $NEW_SIG"
-          fi
-
-      - name: Rename artifacts and prepare update files (Windows)
-        if: matrix.platform == 'windows-latest'
-        shell: pwsh
-        run: |
-          $VERSION = "${{ github.ref_name }}".TrimStart('v')
-          $NAME = "${{ matrix.name }}"
-          
-          # Find MSI and NSIS files
-          $MSI = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
-          $NSIS = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis" -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-          
-          if ($MSI) {
-            $NewMSI = "SkillHub-Desktop-$VERSION-$NAME.msi"
-            Copy-Item $MSI.FullName -Destination $NewMSI
-            echo "msi_path=$NewMSI" >> $env:GITHUB_ENV
-            Write-Host "Created: $NewMSI"
-          }
-          
-          if ($NSIS) {
-            $NewNSIS = "SkillHub-Desktop-$VERSION-$NAME-Setup.exe"
-            Copy-Item $NSIS.FullName -Destination $NewNSIS
-            echo "nsis_path=$NewNSIS" >> $env:GITHUB_ENV
-            Write-Host "Created: $NewNSIS"
-          }
-          
-          # Find .msi.zip for updater (Tauri generates this)
-          $ZIP = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi.zip" -ErrorAction SilentlyContinue | Select-Object -First 1
-          $SIG = Get-ChildItem -Path "src-tauri/target/release/bundle/msi" -Filter "*.msi.zip.sig" -ErrorAction SilentlyContinue | Select-Object -First 1
-          
-          if ($ZIP) {
-            $NewZIP = "SkillHub-Desktop-$VERSION-$NAME.msi.zip"
-            Copy-Item $ZIP.FullName -Destination $NewZIP
-            echo "zip_path=$NewZIP" >> $env:GITHUB_ENV
-            Write-Host "Created: $NewZIP"
-          }
-          
-          if ($SIG) {
-            $NewSIG = "SkillHub-Desktop-$VERSION-$NAME.msi.zip.sig"
-            Copy-Item $SIG.FullName -Destination $NewSIG
-            echo "sig_path=$NewSIG" >> $env:GITHUB_ENV
-            $Signature = Get-Content $SIG.FullName -Raw
-            echo "signature=$Signature" >> $env:GITHUB_ENV
-            Write-Host "Created: $NewSIG"
-          }
-
-      - name: Rename artifacts and prepare update files (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
-        shell: bash
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          NAME="${{ matrix.name }}"
-          
-          # Find DEB and AppImage files
-          DEB_FILE=$(find src-tauri/target/release/bundle/deb -name "*.deb" 2>/dev/null | head -1)
-          APPIMAGE_FILE=$(find src-tauri/target/release/bundle/appimage -name "*.AppImage" 2>/dev/null | head -1)
-          
-          if [ -n "$DEB_FILE" ]; then
-            NEW_DEB="SkillHub-Desktop-${VERSION}-${NAME}.deb"
-            cp "$DEB_FILE" "$NEW_DEB"
-            echo "deb_path=$NEW_DEB" >> $GITHUB_ENV
-            echo "Created: $NEW_DEB"
-          fi
-          
-          if [ -n "$APPIMAGE_FILE" ]; then
-            NEW_APPIMAGE="SkillHub-Desktop-${VERSION}-${NAME}.AppImage"
-            cp "$APPIMAGE_FILE" "$NEW_APPIMAGE"
-            echo "appimage_path=$NEW_APPIMAGE" >> $GITHUB_ENV
-            echo "Created: $NEW_APPIMAGE"
-          fi
-          
-          # Find AppImage.tar.gz for updater
-          TAR_FILE=$(find src-tauri/target/release/bundle/appimage -name "*.AppImage.tar.gz" 2>/dev/null | head -1)
-          SIG_FILE=$(find src-tauri/target/release/bundle/appimage -name "*.AppImage.tar.gz.sig" 2>/dev/null | head -1)
-          
-          if [ -n "$TAR_FILE" ]; then
-            NEW_TAR="SkillHub-Desktop-${VERSION}-${NAME}.AppImage.tar.gz"
-            cp "$TAR_FILE" "$NEW_TAR"
-            echo "tar_path=$NEW_TAR" >> $GITHUB_ENV
-            echo "Created: $NEW_TAR"
-          fi
-          
-          if [ -n "$SIG_FILE" ]; then
-            NEW_SIG="SkillHub-Desktop-${VERSION}-${NAME}.AppImage.tar.gz.sig"
-            cp "$SIG_FILE" "$NEW_SIG"
-            echo "sig_path=$NEW_SIG" >> $GITHUB_ENV
-            SIGNATURE=$(cat "$SIG_FILE")
-            echo "signature=$SIGNATURE" >> $GITHUB_ENV
-            echo "Created: $NEW_SIG"
-          fi
-
-      - name: Save updater info
-        shell: bash
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          TARGET="${{ matrix.updater_target }}"
-          
-          # Create updater info JSON
-          mkdir -p updater-info
-          
-          echo "{
-            \"target\": \"$TARGET\",
-            \"version\": \"$VERSION\",
-            \"signature\": \"${{ env.signature }}\"
-          }" > updater-info/$TARGET.json
-          
-          echo "Created updater info for $TARGET"
-
-      - name: Upload macOS artifacts
-        if: matrix.platform == 'macos-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: SkillHub-Desktop-${{ matrix.name }}
-          path: |
-            *.dmg
-            *.app.tar.gz
-            *.app.tar.gz.sig
-
-      - name: Upload Windows artifacts
-        if: matrix.platform == 'windows-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: SkillHub-Desktop-${{ matrix.name }}
-          path: |
-            *.msi
-            *.exe
-            *.msi.zip
-            *.msi.zip.sig
-
-      - name: Upload Linux artifacts
-        if: matrix.platform == 'ubuntu-22.04'
-        uses: actions/upload-artifact@v4
-        with:
-          name: SkillHub-Desktop-${{ matrix.name }}
-          path: |
-            *.deb
-            *.AppImage
-            *.AppImage.tar.gz
-            *.AppImage.tar.gz.sig
-
-      - name: Upload updater info
-        uses: actions/upload-artifact@v4
-        with:
-          name: updater-info-${{ matrix.updater_target }}
-          path: updater-info/
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Display artifacts
-        run: |
-          echo "Downloaded artifacts:"
-          find artifacts -type f -name "*"
-
-      - name: Generate latest.json for updater
-        shell: bash
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          REPO="${{ github.repository }}"
-          
-          # Read signatures from updater-info files
-          DARWIN_AARCH64_SIG=""
-          DARWIN_X86_64_SIG=""
-          WINDOWS_X86_64_SIG=""
-          LINUX_X86_64_SIG=""
-          
-          if [ -f "artifacts/updater-info-darwin-aarch64/darwin-aarch64.json" ]; then
-            DARWIN_AARCH64_SIG=$(jq -r '.signature' artifacts/updater-info-darwin-aarch64/darwin-aarch64.json)
-          fi
-          if [ -f "artifacts/updater-info-darwin-x86_64/darwin-x86_64.json" ]; then
-            DARWIN_X86_64_SIG=$(jq -r '.signature' artifacts/updater-info-darwin-x86_64/darwin-x86_64.json)
-          fi
-          if [ -f "artifacts/updater-info-windows-x86_64/windows-x86_64.json" ]; then
-            WINDOWS_X86_64_SIG=$(jq -r '.signature' artifacts/updater-info-windows-x86_64/windows-x86_64.json)
-          fi
-          if [ -f "artifacts/updater-info-linux-x86_64/linux-x86_64.json" ]; then
-            LINUX_X86_64_SIG=$(jq -r '.signature' artifacts/updater-info-linux-x86_64/linux-x86_64.json)
-          fi
-          
-          # Create latest.json
-          cat > latest.json << EOF
-          {
-            "version": "${VERSION}",
-            "notes": "SkillHub Desktop ${VERSION}",
-            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "platforms": {
-              "darwin-aarch64": {
-                "signature": "${DARWIN_AARCH64_SIG}",
-                "url": "https://github.com/${REPO}/releases/download/v${VERSION}/SkillHub-Desktop-${VERSION}-Mac-Apple-Silicon.app.tar.gz"
-              },
-              "darwin-x86_64": {
-                "signature": "${DARWIN_X86_64_SIG}",
-                "url": "https://github.com/${REPO}/releases/download/v${VERSION}/SkillHub-Desktop-${VERSION}-Mac-Intel.app.tar.gz"
-              },
-              "windows-x86_64": {
-                "signature": "${WINDOWS_X86_64_SIG}",
-                "url": "https://github.com/${REPO}/releases/download/v${VERSION}/SkillHub-Desktop-${VERSION}-Windows-x64.msi.zip"
-              },
-              "linux-x86_64": {
-                "signature": "${LINUX_X86_64_SIG}",
-                "url": "https://github.com/${REPO}/releases/download/v${VERSION}/SkillHub-Desktop-${VERSION}-Linux-x64.AppImage.tar.gz"
-              }
-            }
-          }
-          EOF
-          
-          echo "Generated latest.json:"
-          cat latest.json
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: 'SkillHub Desktop ${{ github.ref_name }}'
-          body: |
-            ## Downloads 下载
-
-            | Platform 平台 | File 文件 | Description 说明 |
-            |--------------|----------|-----------------|
-            | 🍎 macOS (M1/M2/M3/M4) | `*-Mac-Apple-Silicon.dmg` | Apple Silicon 芯片 Mac |
-            | 🍎 macOS (Intel) | `*-Mac-Intel.dmg` | Intel 芯片 Mac |
-            | 🪟 Windows | `*-Windows-x64.msi` | Windows 安装包 |
-            | 🪟 Windows | `*-Windows-x64-Setup.exe` | Windows 安装程序 |
-            | 🐧 Linux | `*-Linux-x64.deb` | Debian/Ubuntu |
-            | 🐧 Linux | `*-Linux-x64.AppImage` | 通用 Linux |
-
-            ## Auto-Update 自动更新
-
-            This release supports auto-update! The app will check for updates automatically.
+            ## ⚠️ macOS Users / macOS 用户请注意
+            If you encounter the "App is damaged" error or cannot open the app, it is because the app is not notarized by Apple yet. Please run the following command in your Terminal to fix it:
             
-            本版本支持自动更新！应用会自动检测新版本。
+            如果打开应用时提示“应用已损坏”或无法打开，这是因为应用尚未经过 Apple 签名公证。请在终端（Terminal）中运行以下命令来解决：
 
-            ---
-            See [CHANGELOG](https://github.com/skillhub-club/skillhub-desktop/blob/main/CHANGELOG.md) for details.
-          draft: false
+            ```bash
+            xattr -cr /Applications/"SkillHub Desktop.app"
+            ```
+            *(Make sure you have moved the app to the Applications folder / 确保您已经将应用拖入到了“应用程序”文件夹)*
+
+            ## Downloads
+            - **macOS (Apple Silicon)**: `.dmg` file for M1/M2/M3 Macs
+            - **macOS (Intel)**: `.dmg` file for Intel Macs
+            - **Windows**: `.msi` installer or `.exe` setup
+          releaseDraft: false
           prerelease: false
-          files: |
-            artifacts/**/*.dmg
-            artifacts/**/*.msi
-            artifacts/**/*.exe
-            artifacts/**/*.deb
-            artifacts/**/*.AppImage
-            artifacts/**/*.app.tar.gz
-            artifacts/**/*.msi.zip
-            artifacts/**/*.AppImage.tar.gz
-            latest.json
+          args: ${{ matrix.args }}
