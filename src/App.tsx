@@ -20,6 +20,7 @@ import Toast from './components/Toast'
 import UserMenu from './components/UserMenu'
 import SearchDialog from './components/SearchDialog'
 import { UpdateChecker } from './components/UpdateChecker'
+import Logo from './components/Logo'
 
 const getNavItems = (t: (key: string) => string) => [
   { path: '/', icon: Search, label: t('nav.discover') },
@@ -105,7 +106,7 @@ function App() {
               className="w-full p-3 flex items-center justify-center hover:bg-background transition-colors"
               title={t('nav.expandSidebar')}
             >
-              <PanelLeft size={20} className="text-foreground" />
+              <Logo size="sm" />
             </button>
           ) : (
             <div className="flex items-center">
@@ -113,12 +114,15 @@ function App() {
                 onClick={() => open('https://www.skillhub.club')}
                 className="flex-1 p-4 text-left hover:bg-background transition-colors group"
               >
-                <div className="flex items-center gap-2">
-                  <div>
-                    <h1 className="text-xl font-bold text-foreground tracking-tight group-hover:underline">SKILLHUB</h1>
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest">Desktop</p>
+                <div className="flex items-center gap-3">
+                  <Logo size="md" />
+                  <div className="flex items-center gap-2">
+                    <div>
+                      <h1 className="text-xl font-bold text-foreground tracking-tight group-hover:underline">SKILLHUB</h1>
+                      <p className="text-xs text-muted-foreground uppercase tracking-widest">Desktop</p>
+                    </div>
+                    <ExternalLink size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <ExternalLink size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               </button>
               <button

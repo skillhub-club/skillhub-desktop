@@ -26,6 +26,7 @@ const TOOL_ICONS: Record<string, string> = {
   'zencoder': 'https://zencoder.ai/favicon.ico',
   'zed': 'https://zed.dev/favicon.ico',
   'vscode': 'https://code.visualstudio.com/favicon.ico',
+  'trae': 'https://traeide.com/favicon.ico',
 }
 
 // Fallback colors for tools without icons
@@ -47,6 +48,7 @@ const TOOL_COLORS: Record<string, string> = {
   'zencoder': '#14B8A6',
   'zed': '#000000',
   'vscode': '#007ACC',
+  'trae': '#7C3AED',
 }
 
 // Short names for fallback display
@@ -68,6 +70,7 @@ const TOOL_SHORT_NAMES: Record<string, string> = {
   'zencoder': 'ZC',
   'zed': 'ZD',
   'vscode': 'VS',
+  'trae': 'TR',
 }
 
 export default function ToolIcon({ toolId, size = 24, className = '' }: ToolIconProps) {

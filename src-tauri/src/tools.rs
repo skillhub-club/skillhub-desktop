@@ -21,6 +21,9 @@ use tokio::fs;
 //   User: ~/.gemini/skills/, Workspace: .gemini/skills/
 // - Windsurf: https://docs.windsurf.com/windsurf/cascade/memories
 //   Project only: .windsurf/rules/ (no global ~/.windsurf path officially supported)
+// - TRAE IDE: https://docs.trae.ai/ide/skills
+//   Global: ~/.trae/skills/, Project: .trae/skills/
+//   Also supports rules: .trae/project_rules.md (v1.3.0+)
 
 struct ToolConfig {
     id: &'static str,
@@ -168,6 +171,16 @@ const SUPPORTED_TOOLS: &[ToolConfig] = &[
         config_paths: &[".zed"],
         primary_subpath: "rules",
         all_subpaths: &["rules"],
+    },
+    // TRAE IDE: ~/.trae/skills/
+    // Global: ~/.trae/skills/, Project: .trae/skills/
+    // Also supports rules configuration (v1.3.0+)
+    ToolConfig {
+        id: "trae",
+        name: "TRAE IDE",
+        config_paths: &[".trae"],
+        primary_subpath: "skills",
+        all_subpaths: &["skills"],
     },
     // Note: VS Code uses GitHub Copilot for skills, so no separate vscode entry needed
 ];
