@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_þB_1" xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <style>.cls-1{fill:none;stroke:#fff;stroke-linecap:round;stroke-linejoin:round;stroke-width:10px;}</style>
+  </defs>
+  <g transform="translate(20, 20)">
+    <polyline class="cls-1" points="30 80 30 40 86.05 7.64"/>
+    <polyline class="cls-1" points="63.33 97.32 63.33 57.32 119.38 24.96"/>
+    <polyline class="cls-1" points="130 80 130 120 73.95 152.36"/>
+    <polyline class="cls-1" points="96.67 62.68 96.67 102.68 40.62 135.04"/>
+    <line class="cls-1" x1="30" y1="40" x2="63.33" y2="57.32"/>
+    <line class="cls-1" x1="96.67" y1="102.68" x2="130" y2="120"/>
+  </g>
+</svg>

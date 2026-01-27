@@ -40,6 +40,7 @@ A desktop application for managing AI coding skills across multiple tools. Brows
 - Roo Code
 - Aide
 - Augment
+- TRAE IDE
 
 ## Keyboard Shortcuts
 
