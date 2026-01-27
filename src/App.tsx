@@ -1,5 +1,5 @@
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom'
-import { Search, Package, RefreshCw, Settings, Heart, Folder, PlusCircle, ExternalLink, Store, Play, PanelLeftClose, PanelLeft } from 'lucide-react'
+import { Search, Package, RefreshCw, Settings, Heart, Folder, PlusCircle, ExternalLink, Store, Play, PanelLeftClose } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
