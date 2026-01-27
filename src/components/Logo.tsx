@@ -16,7 +16,8 @@ export default function Logo({ className = '', size = 'md', onClick }: LogoProps
   const { theme } = useAppStore()
   
   // In dark mode, use white icon; in light mode, use black icon
-  const iconPath = theme === 'dark' ? '/white_icon/SVG.svg' : '/black_icon/SVG.svg'
+  // Default to dark mode if theme is not set
+  const iconPath = theme === 'light' ? '/black_icon/SVG.svg' : '/white_icon/SVG.svg'
   
   return (
     <img
