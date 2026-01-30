@@ -64,6 +64,7 @@
     "skillsManager": "Skills Manager",
     "playground": "Playground",
     "sync": "Sync",
+    "mySkills": "My Skills",
     "settings": "Settings",
     "expandSidebar": "Expand sidebar",
     "collapseSidebar": "Collapse sidebar"
@@ -723,6 +724,57 @@
     "onlyIn": "Only in {{tool}}",
     "inBoth": "In Both",
     "noSkills": "No skills"
+  },
+  "mySkills": {
+    "title": "My Skills",
+    "subtitle": "Manage your cloud skills, sync, and version history",
+    "signInTitle": "Sign in to manage your skills",
+    "signInDesc": "Sign in with your SkillHub account to sync, version, and manage your cloud skills.",
+    "noSkills": "No skills yet",
+    "noSkillsDesc": "Create your first skill on SkillHub or use the Create page to get started.",
+    "createOnWeb": "Create on SkillHub",
+    "updated": "Updated {{date}}",
+    "openLocal": "Open local",
+    "pull": "Pull",
+    "push": "Push",
+    "compare": "Compare",
+    "viewHistory": "History",
+    "exportGit": "Export Git",
+    "pullSuccess": "Pulled \"{{name}}\" successfully",
+    "pushSuccess": "Pushed \"{{name}}\" successfully",
+    "exportSuccess": "Exported \"{{name}}\" as Git ZIP",
+    "rollbackSuccess": "Rolled back to version {{version}}",
+    "notSyncedLocally": "Skill is not synced locally",
+    "noToolsForPull": "No tools detected to pull skill to",
+    "status": {
+      "inSync": "In Sync",
+      "localChanges": "Local Changes",
+      "remoteChanges": "Remote Changes",
+      "conflict": "Conflict",
+      "notSynced": "Not Synced"
+    },
+    "diff": {
+      "title": "Version Diff",
+      "from": "From",
+      "to": "To",
+      "noSummary": "No summary",
+      "sameVersion": "Select different versions to compare",
+      "noChanges": "No changes between these versions",
+      "added": "Added",
+      "modified": "Modified",
+      "deleted": "Deleted"
+    },
+    "history": {
+      "title": "Version History",
+      "totalVersions": "{{count}} version(s)",
+      "currentVersion": "Current: v{{version}}",
+      "noVersions": "No versions found",
+      "current": "Current",
+      "files": "files",
+      "compare": "Compare with previous",
+      "viewFiles": "View files at this version",
+      "rollback": "Rollback to this version"
+    }
   },
   "favorites": {
     "title": "Favorites",

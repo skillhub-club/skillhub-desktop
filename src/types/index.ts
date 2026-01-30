@@ -224,3 +224,92 @@ export interface MarketplaceResponse {
   page_size: number
   total: number
 }
+
+// Sync types
+export interface SyncFile {
+  filepath: string
+  content: string
+  content_hash: string
+  file_size: number
+}
+
+export interface SyncMeta {
+  skill_id: string
+  skill_slug: string
+  version: number
+  synced_at: string
+  platform_url: string
+}
+
+export interface PullResponse {
+  skill: UserSkill
+  version: number | null
+  version_info: VersionEntry | null
+  files: SyncFile[]
+}
+
+export interface PushRequest {
+  skill_id?: string
+  name?: string
+  files: SyncFile[]
+  change_summary?: string
+  source: string
+}
+
+export interface PushResponse {
+  skill: UserSkill
+  version: number
+  file_count: number
+  git_commit_oid: string | null
+}
+
+export interface RemoteStatus {
+  skill: UserSkill
+  current_version: number
+  updated_at: string
+  files: { filepath: string; content_hash: string; file_size: number }[]
+}
+
+export interface VersionListResponse {
+  current_version: number
+  versions: VersionEntry[]
+}
+
+export interface VersionEntry {
+  id: string
+  version: number
+  change_summary: string | null
+  source: string
+  total_size: number
+  file_count: number
+  git_commit_oid: string | null
+  created_at: string
+}
+
+export interface HistoryResponse {
+  skill_id: string
+  total_versions: number
+  versions: (VersionEntry & { diff?: DiffEntry[] })[]
+}
+
+export interface DiffResponse {
+  skill_id: string
+  from_version: number
+  to_version: number
+  changes: DiffEntry[]
+  summary: { added: number; modified: number; deleted: number }
+}
+
+export interface DiffEntry {
+  filepath: string
+  status: 'added' | 'modified' | 'deleted'
+  oldContent?: string
+  newContent?: string
+}
+
+export interface CompareResult {
+  has_changes: boolean
+  added: string[]
+  modified: string[]
+  deleted: string[]
+}

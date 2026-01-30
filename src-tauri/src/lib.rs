@@ -1,4 +1,5 @@
 mod installer;
+mod sync;
 mod tools;
 
 use serde::{Deserialize, Serialize};
@@ -521,6 +522,40 @@ fn get_claude_env_vars() -> Vec<(String, String)> {
     installer::get_claude_env_vars()
 }
 
+// ============================================
+// Sync Commands
+// ============================================
+
+// Collect all files from a skill directory with SHA-256 hashes
+#[tauri::command]
+async fn collect_skill_files_for_sync(path: String) -> Result<Vec<sync::SyncFile>, String> {
+    sync::collect_files(&path).await
+}
+
+// Write pulled files to local directory
+#[tauri::command]
+async fn write_synced_files(path: String, files: Vec<sync::SyncFile>) -> Result<(), String> {
+    sync::write_files(&path, &files).await
+}
+
+// Read .skillhub.json metadata from skill directory
+#[tauri::command]
+async fn read_sync_meta(path: String) -> Result<Option<sync::SyncMeta>, String> {
+    sync::read_meta(&path).await
+}
+
+// Write .skillhub.json metadata file
+#[tauri::command]
+async fn write_sync_meta(path: String, meta: sync::SyncMeta) -> Result<(), String> {
+    sync::write_meta(&path, &meta).await
+}
+
+// Save binary data (Git ZIP export) to disk
+#[tauri::command]
+async fn save_export_file(data: Vec<u8>, save_path: String) -> Result<(), String> {
+    sync::save_export(&data, &save_path).await
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -558,6 +593,12 @@ pub fn run() {
             uninstall_temp_skill,
             write_temp_skill,
             cleanup_temp_skill,
+            // Sync commands
+            collect_skill_files_for_sync,
+            write_synced_files,
+            read_sync_meta,
+            write_sync_meta,
+            save_export_file,
             // Installer commands
             check_dependencies,
             get_install_steps,
