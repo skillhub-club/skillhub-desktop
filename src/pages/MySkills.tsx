@@ -66,13 +66,18 @@ export default function MySkills() {
     setLoading(true)
     try {
       const data = await listUserSkills(accessToken)
-      setSkills(data)
+      console.log('[MySkills] listUserSkills raw response:', data)
+      // API may return { skills: [...] } or [...] directly
+      const skillsList = Array.isArray(data) ? data : (data as unknown as { skills: UserSkill[] }).skills ?? []
+      console.log('[MySkills] parsed skills:', skillsList.length)
+      setSkills(skillsList)
     } catch (e) {
-      console.error('Failed to load skills:', e)
+      console.error('[MySkills] Failed to load skills:', e)
+      showToast(e instanceof Error ? e.message : 'Failed to load skills', 'error')
     } finally {
       setLoading(false)
     }
-  }, [isAuthenticated, accessToken])
+  }, [isAuthenticated, accessToken, showToast])
 
   useEffect(() => {
     loadSkills()
@@ -370,7 +375,7 @@ export default function MySkills() {
           <h3 className="text-lg font-bold mb-2">{t('mySkills.noSkills')}</h3>
           <p className="text-muted-foreground max-w-md mb-4">{t('mySkills.noSkillsDesc')}</p>
           <button
-            onClick={() => open(`${SKILLHUB_URL}/dashboard/skills`)}
+            onClick={() => open(`${SKILLHUB_URL}/app/skills`)}
             className="flex items-center gap-2 px-4 py-2 bg-foreground text-background font-semibold text-sm uppercase"
           >
             <ExternalLink size={16} />
