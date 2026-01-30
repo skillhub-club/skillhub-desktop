@@ -64,6 +64,7 @@
     "skillsManager": "技能管理",
     "playground": "试炼场",
     "sync": "同步",
+    "mySkills": "我的技能",
     "settings": "设置",
     "expandSidebar": "展开侧边栏",
     "collapseSidebar": "收起侧边栏"
@@ -722,6 +723,57 @@
     "onlyIn": "仅在 {{tool}}",
     "inBoth": "两者都有",
     "noSkills": "无技能"
+  },
+  "mySkills": {
+    "title": "我的技能",
+    "subtitle": "管理云端技能、同步和版本历史",
+    "signInTitle": "登录以管理技能",
+    "signInDesc": "登录 SkillHub 账户以同步、版本控制和管理你的云端技能。",
+    "noSkills": "暂无技能",
+    "noSkillsDesc": "在 SkillHub 上创建你的第一个技能，或使用创建页面开始。",
+    "createOnWeb": "在 SkillHub 创建",
+    "updated": "更新于 {{date}}",
+    "openLocal": "打开本地",
+    "pull": "拉取",
+    "push": "推送",
+    "compare": "对比",
+    "viewHistory": "历史",
+    "exportGit": "导出 Git",
+    "pullSuccess": "已成功拉取「{{name}}」",
+    "pushSuccess": "已成功推送「{{name}}」",
+    "exportSuccess": "已将「{{name}}」导出为 Git ZIP",
+    "rollbackSuccess": "已回滚到版本 {{version}}",
+    "notSyncedLocally": "技能尚未同步到本地",
+    "noToolsForPull": "未检测到可拉取技能的工具",
+    "status": {
+      "inSync": "已同步",
+      "localChanges": "本地更改",
+      "remoteChanges": "远程更改",
+      "conflict": "冲突",
+      "notSynced": "未同步"
+    },
+    "diff": {
+      "title": "版本差异",
+      "from": "从",
+      "to": "到",
+      "noSummary": "无摘要",
+      "sameVersion": "请选择不同的版本进行对比",
+      "noChanges": "这两个版本之间没有更改",
+      "added": "新增",
+      "modified": "修改",
+      "deleted": "删除"
+    },
+    "history": {
+      "title": "版本历史",
+      "totalVersions": "{{count}} 个版本",
+      "currentVersion": "当前：v{{version}}",
+      "noVersions": "未找到版本",
+      "current": "当前",
+      "files": "个文件",
+      "compare": "与上一版本对比",
+      "viewFiles": "查看该版本文件",
+      "rollback": "回滚到此版本"
+    }
   },
   "favorites": {
     "title": "收藏",

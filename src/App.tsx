@@ -1,5 +1,6 @@
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom'
-import { Search, Package, RefreshCw, Settings, Heart, Folder, PlusCircle, ExternalLink, Store, Play, PanelLeftClose } from 'lucide-react'
+
+import { Search, Package, RefreshCw, Settings, Heart, Folder, PlusCircle, ExternalLink, Store, Play, PanelLeftClose, Cloud } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
 import { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +17,7 @@ import Favorites from './pages/Favorites'
 import Collections from './pages/Collections'
 import CreateSkill from './pages/CreateSkill'
 import Marketplace from './pages/Marketplace'
+import MySkills from './pages/MySkills'
 import Toast from './components/Toast'
 import UserMenu from './components/UserMenu'
 import SearchDialog from './components/SearchDialog'
@@ -31,6 +33,7 @@ const getNavItems = (t: (key: string) => string) => [
   { path: '/installed', icon: Package, label: t('nav.skillsManager') },
   { path: '/playground', icon: Play, label: t('nav.playground') },
   { path: '/sync', icon: RefreshCw, label: t('nav.sync') },
+  { path: '/my-skills', icon: Cloud, label: t('nav.mySkills'), authRequired: true },
   { path: '/settings', icon: Settings, label: t('nav.settings') },
 ]
 
@@ -181,6 +184,7 @@ function App() {
           <Route path="/installed" element={<Installed />} />
           <Route path="/playground" element={<Playground />} />
           <Route path="/sync" element={<Sync />} />
+          <Route path="/my-skills" element={<MySkills />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
